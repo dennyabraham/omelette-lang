@@ -154,6 +154,103 @@ function Parser:parse_primary()
   self:fail("unexpected token '" .. tostring(t.value) .. "'")
 end
 
+function Parser:parse_program()
+  local stmts = {}
+  while not self:at("eof") do
+    stmts[#stmts + 1] = self:parse_statement()
+  end
+  return { kind = "program", stmts = stmts, line = 1, col = 1 }
+end
+
+function Parser:parse_statement()
+  if self:at("keyword", "pub") or self:at("keyword", "let") then
+    return self:parse_let()
+  end
+  -- a bare top-level expression is allowed (e.g. a call for its side effect)
+  return self:parse_expr()
+end
+
+function Parser:parse_let()
+  local is_pub = false
+  local startt = self:peek()
+  if self:at("keyword", "pub") then is_pub = true; self:next() end
+  self:expect("keyword", "let")
+  local name = self:expect("ident").value
+  local params = nil
+  while self:at("ident") do
+    params = params or {}
+    params[#params + 1] = self:next().value
+  end
+  self:expect("op", "=")
+  local value = self:parse_block_or_expr()
+  return { kind = "let", name = name, params = params, value = value,
+           is_pub = is_pub, line = startt.line, col = startt.col }
+end
+
+function Parser:parse_block_or_expr()
+  -- a block is a run of `let` statements terminated by a trailing expression
+  if not self:at("keyword", "let") then
+    return self:parse_expr_or_form()
+  end
+  local stmts = {}
+  while self:at("keyword", "let") do
+    stmts[#stmts + 1] = self:parse_let()
+  end
+  local result = self:parse_expr_or_form()
+  return { kind = "block", stmts = stmts, result = result,
+           line = stmts[1].line, col = stmts[1].col }
+end
+
+-- expression position that may also begin with fn/if/match keyword forms
+function Parser:parse_expr_or_form()
+  if self:at("keyword", "fn") then return self:parse_lambda() end
+  if self:at("keyword", "if") then return self:parse_if() end
+  if self:at("keyword", "match") then return self:parse_match() end
+  return self:parse_expr()
+end
+
+function Parser:parse_lambda()
+  local t = self:expect("keyword", "fn")
+  local params = {}
+  while self:at("ident") do params[#params + 1] = self:next().value end
+  self:expect("op", "->")
+  local body = self:parse_expr_or_form()
+  return { kind = "lambda", params = params, body = body, line = t.line, col = t.col }
+end
+
+function Parser:parse_if()
+  local t = self:expect("keyword", "if")
+  local cond = self:parse_expr()
+  self:expect("keyword", "then")
+  local then_branch = self:parse_expr_or_form()
+  self:expect("keyword", "else")
+  local else_branch = self:parse_expr_or_form()
+  return { kind = "if", cond = cond, then_branch = then_branch,
+           else_branch = else_branch, line = t.line, col = t.col }
+end
+
+function Parser:parse_match()
+  local t = self:expect("keyword", "match")
+  local subject = self:parse_expr()
+  self:expect("keyword", "with")
+  local cases = {}
+  while self:at("punct", "|") do
+    self:next()
+    local pattern
+    if self:at("punct", "_") then
+      self:next(); pattern = { kind = "wildcard" }
+    else
+      local lit = self:parse_primary()
+      pattern = { kind = "lit", value = lit.value, lit_kind = lit.kind }
+    end
+    self:expect("op", "->")
+    local body = self:parse_expr_or_form()
+    cases[#cases + 1] = { pattern = pattern, body = body }
+  end
+  if #cases == 0 then self:fail("match needs at least one | case") end
+  return { kind = "match", subject = subject, cases = cases, line = t.line, col = t.col }
+end
+
 local function run(parser, fn)
   local ok, result = pcall(fn)
   if not ok then
