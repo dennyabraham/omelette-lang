@@ -6,6 +6,8 @@ local M = {}
 function M.compile(source)
   local program, perr = parser.parse(source)
   if not program then return nil, perr end
+  local resolver = require("omelette.resolver")
+  program = resolver.resolve(program)
   local ok, lua = pcall(codegen.program, program)
   if not ok then
     local errors = require("omelette.errors")
