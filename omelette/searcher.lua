@@ -17,9 +17,10 @@ local function loader(name)
     if src then
       local lua, err = compiler.compile(src)
       if not lua then return "\n\t[omelette] " .. (err and err.message or "compile error") end
-      local chunk
-      if _VERSION == "Lua 5.1" then chunk = assert(loadstring(lua, path))
-      else chunk = assert(load(lua, path)) end
+      local chunk, lerr
+      if _VERSION == "Lua 5.1" then chunk, lerr = loadstring(lua, path)
+      else chunk, lerr = load(lua, path) end
+      if not chunk then return "\n\t[omelette] generated lua error: " .. tostring(lerr) end
       return chunk
     end
   end

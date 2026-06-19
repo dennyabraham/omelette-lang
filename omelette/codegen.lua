@@ -1,6 +1,6 @@
 local M = {}
 
-function M.new_ctx() return { holes = 0 } end
+function M.new_ctx() return {} end
 
 local function quote_string(s)
   return '"' .. s:gsub("\\", "\\\\"):gsub('"', '\\"'):gsub("\n", "\\n"):gsub("\t", "\\t") .. '"'
@@ -89,22 +89,12 @@ expr = function(node, ctx)
     return "{" .. table.concat(parts, ", ") .. "}"
   end
   if k == "lambda" then
-    return "function(" .. table.concat(node.params, ", ") .. ") return " .. expr(node.body, ctx) .. " end"
+    return "function(" .. table.concat(node.params, ", ") .. ")\n" .. gen_fn_body(node.body, ctx, "  ") .. "\nend"
   end
   error("codegen: cannot emit expression of kind '" .. tostring(k) .. "'")
 end
 
 M.expr = expr
-
-local function indent_lines(s, pad)
-  local out = {}
-  for line in (s .. "\n"):gmatch("(.-)\n") do
-    if line ~= "" then out[#out + 1] = pad .. line else out[#out + 1] = "" end
-  end
-  -- drop trailing empty produced by the split
-  if out[#out] == "" then out[#out] = nil end
-  return table.concat(out, "\n")
-end
 
 local gen_value  -- forward
 
@@ -122,19 +112,26 @@ gen_value = function(target, node, ctx, pad)
   end
   if k == "match" then
     local subj = M.expr(node.subject, ctx)
-    local lines, first = {}, true
+    -- collect literal cases in order; find the wildcard case (if any)
+    local lit_cases, wildcard_case = {}, nil
     for _, c in ipairs(node.cases) do
       if c.pattern.kind == "wildcard" then
-        lines[#lines + 1] = pad .. "else"
-        lines[#lines + 1] = gen_value(target, c.body, ctx, pad .. "  ")
+        wildcard_case = c
       else
-        local lit = M.expr({ kind = c.pattern.lit_kind, value = c.pattern.value,
-          name = c.pattern.value }, ctx)
-        local kw = first and "if " or "elseif "
-        lines[#lines + 1] = pad .. kw .. subj .. " == " .. lit .. " then"
-        lines[#lines + 1] = gen_value(target, c.body, ctx, pad .. "  ")
-        first = false
+        lit_cases[#lit_cases + 1] = c
       end
+    end
+    local lines = {}
+    for i, c in ipairs(lit_cases) do
+      local lit = M.expr({ kind = c.pattern.lit_kind, value = c.pattern.value,
+        name = c.pattern.value }, ctx)
+      local kw = i == 1 and "if " or "elseif "
+      lines[#lines + 1] = pad .. kw .. subj .. " == " .. lit .. " then"
+      lines[#lines + 1] = gen_value(target, c.body, ctx, pad .. "  ")
+    end
+    if wildcard_case then
+      lines[#lines + 1] = pad .. "else"
+      lines[#lines + 1] = gen_value(target, wildcard_case.body, ctx, pad .. "  ")
     end
     lines[#lines + 1] = pad .. "end"
     return table.concat(lines, "\n")

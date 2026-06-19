@@ -1,4 +1,3 @@
-local lexer = require("omelette.lexer")
 local parser = require("omelette.parser")
 local codegen = require("omelette.codegen")
 local M = {}

@@ -31,7 +31,8 @@ local function cmd_build(argv)
     return 1
   end
   if has_flag(argv, "--tokens") then
-    local toks = assert(lexer.tokenize(src))
+    local toks, terr = lexer.tokenize(src)
+    if not toks then io.write(errors.render(terr) .. "\n"); return 1 end
     for _, t in ipairs(toks) do io.write(t.type .. " " .. tostring(t.value) .. "\n") end
     return 0
   end
@@ -45,7 +46,9 @@ local function cmd_build(argv)
   if not lua then io.write(errors.render(err) .. "\n"); return 1 end
   local out = flag_value(argv, "--out")
   if out then
-    local fh = io.open(out, "w"); fh:write(lua); fh:close()
+    local fh = io.open(out, "w")
+    if not fh then io.write(errors.render(errors.new("cannot write file '" .. tostring(out) .. "'", 1, 1)) .. "\n"); return 1 end
+    fh:write(lua); fh:close()
   else
     io.write(lua .. "\n")
   end
