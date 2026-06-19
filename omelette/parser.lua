@@ -265,7 +265,7 @@ function M.parse_expr_string(source)
   if not toks then return nil, lerr end
   local p = new_parser(toks, source)
   return run(p, function()
-    local e = p:parse_expr()
+    local e = p:parse_expr_or_form()
     p:expect("eof")
     return e
   end)
