@@ -44,16 +44,16 @@ end
 
 -- pipe: thread lhs as the first argument of rhs
 local function gen_pipe(node, ctx)
-  local lhs_str = expr(node.lhs, ctx)
   local rhs = node.rhs
   if rhs.kind == "call" then
-    -- build arg list: lhs_str first, then remaining rhs args
-    local parts = { lhs_str }
-    for _, a in ipairs(rhs.args) do parts[#parts + 1] = expr(a, ctx) end
-    return expr(rhs.fn, ctx) .. "(" .. table.concat(parts, ", ") .. ")"
+    -- build a new call AST node with the lhs node prepended to rhs args,
+    -- then route through gen_call so hole-args are handled correctly
+    local new_args = { node.lhs }
+    for _, a in ipairs(rhs.args) do new_args[#new_args + 1] = a end
+    return gen_call({ kind = "call", fn = rhs.fn, args = new_args }, ctx)
   end
   -- bare ident / field: call it with the single threaded arg
-  return expr(rhs, ctx) .. "(" .. lhs_str .. ")"
+  return expr(rhs, ctx) .. "(" .. expr(node.lhs, ctx) .. ")"
 end
 
 expr = function(node, ctx)
@@ -81,6 +81,9 @@ expr = function(node, ctx)
   end
   if k == "table" then
     local parts = {}
+    -- f.key is always a bare identifier string (guaranteed by the parser via
+    -- expect("ident").value), so it is safe to concatenate directly rather than
+    -- routing through expr.
     for _, f in ipairs(node.fields) do parts[#parts + 1] = f.key .. " = " .. expr(f.value, ctx) end
     return "{" .. table.concat(parts, ", ") .. "}"
   end
