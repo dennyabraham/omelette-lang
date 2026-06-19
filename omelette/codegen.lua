@@ -13,6 +13,7 @@ local BINOP_LUA = {
 }
 
 local expr  -- forward declaration
+local gen_local_let, gen_fn_body  -- forward declarations for statement helpers
 
 local function gen_args(args, ctx)
   local parts = {}
@@ -94,4 +95,122 @@ expr = function(node, ctx)
 end
 
 M.expr = expr
+
+local function indent_lines(s, pad)
+  local out = {}
+  for line in (s .. "\n"):gmatch("(.-)\n") do
+    if line ~= "" then out[#out + 1] = pad .. line else out[#out + 1] = "" end
+  end
+  -- drop trailing empty produced by the split
+  if out[#out] == "" then out[#out] = nil end
+  return table.concat(out, "\n")
+end
+
+local gen_value  -- forward
+
+-- emit statements assigning the value of `node` into variable `target`
+gen_value = function(target, node, ctx, pad)
+  local k = node.kind
+  if k == "if" then
+    local lines = {}
+    lines[#lines + 1] = pad .. "if " .. M.expr(node.cond, ctx) .. " then"
+    lines[#lines + 1] = gen_value(target, node.then_branch, ctx, pad .. "  ")
+    lines[#lines + 1] = pad .. "else"
+    lines[#lines + 1] = gen_value(target, node.else_branch, ctx, pad .. "  ")
+    lines[#lines + 1] = pad .. "end"
+    return table.concat(lines, "\n")
+  end
+  if k == "match" then
+    local subj = M.expr(node.subject, ctx)
+    local lines, first = {}, true
+    for _, c in ipairs(node.cases) do
+      if c.pattern.kind == "wildcard" then
+        lines[#lines + 1] = pad .. "else"
+        lines[#lines + 1] = gen_value(target, c.body, ctx, pad .. "  ")
+      else
+        local lit = M.expr({ kind = c.pattern.lit_kind, value = c.pattern.value,
+          name = c.pattern.value }, ctx)
+        local kw = first and "if " or "elseif "
+        lines[#lines + 1] = pad .. kw .. subj .. " == " .. lit .. " then"
+        lines[#lines + 1] = gen_value(target, c.body, ctx, pad .. "  ")
+        first = false
+      end
+    end
+    lines[#lines + 1] = pad .. "end"
+    return table.concat(lines, "\n")
+  end
+  if k == "block" then
+    local lines = {}
+    for _, s in ipairs(node.stmts) do
+      lines[#lines + 1] = gen_local_let(s, ctx, pad)
+    end
+    lines[#lines + 1] = gen_value(target, node.result, ctx, pad)
+    return table.concat(lines, "\n")
+  end
+  -- simple expression
+  return pad .. target .. " = " .. M.expr(node, ctx)
+end
+
+-- a `let` used as a local statement (inside a block or at file scope, non-pub)
+gen_local_let = function(node, ctx, pad)
+  pad = pad or ""
+  if node.params then
+    local body = gen_fn_body(node.value, ctx, pad .. "  ")
+    return pad .. "local function " .. node.name .. "(" .. table.concat(node.params, ", ") .. ")\n"
+      .. body .. "\n" .. pad .. "end"
+  end
+  -- value binding: declare then assign (handles if/match/block uniformly)
+  if node.value.kind == "if" or node.value.kind == "match" or node.value.kind == "block" then
+    return pad .. "local " .. node.name .. "\n" .. gen_value(node.name, node.value, ctx, pad)
+  end
+  return pad .. "local " .. node.name .. " = " .. M.expr(node.value, ctx)
+end
+
+-- function body returning the value of `node`
+gen_fn_body = function(node, ctx, pad)
+  local k = node.kind
+  if k == "block" then
+    -- emit inner lets as locals, then return the result
+    local lines = {}
+    for _, s in ipairs(node.stmts) do
+      lines[#lines + 1] = gen_local_let(s, ctx, pad)
+    end
+    -- recurse so the result itself may be if/match/block
+    lines[#lines + 1] = gen_fn_body(node.result, ctx, pad)
+    return table.concat(lines, "\n")
+  end
+  if k == "if" or k == "match" then
+    -- use a temporary return variable for clarity and falsy-safety
+    return pad .. "local __ret\n" .. gen_value("__ret", node, ctx, pad) .. "\n" .. pad .. "return __ret"
+  end
+  return pad .. "return " .. M.expr(node, ctx)
+end
+
+function M.program(program)
+  local ctx = M.new_ctx()
+  local lines = { "local M = {}" }
+  for _, node in ipairs(program.stmts) do
+    if node.kind ~= "let" then
+      -- bare top-level expression (side effect)
+      lines[#lines + 1] = M.expr(node, ctx)
+    elseif node.is_pub and node.params then
+      lines[#lines + 1] = "function M." .. node.name .. "(" .. table.concat(node.params, ", ") .. ")"
+      lines[#lines + 1] = gen_fn_body(node.value, ctx, "  ")
+      lines[#lines + 1] = "end"
+    elseif node.is_pub then
+      if node.value.kind == "if" or node.value.kind == "match" or node.value.kind == "block" then
+        lines[#lines + 1] = "local __" .. node.name
+        lines[#lines + 1] = gen_value("__" .. node.name, node.value, ctx, "")
+        lines[#lines + 1] = "M." .. node.name .. " = __" .. node.name
+      else
+        lines[#lines + 1] = "M." .. node.name .. " = " .. M.expr(node.value, ctx)
+      end
+    else
+      lines[#lines + 1] = gen_local_let(node, ctx, "")
+    end
+  end
+  lines[#lines + 1] = "return M"
+  return table.concat(lines, "\n")
+end
+
 return M
