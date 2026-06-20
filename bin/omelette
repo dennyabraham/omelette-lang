@@ -1,0 +1,5 @@
+#!/usr/bin/env luajit
+-- resolve the repo root relative to this script and set package.path
+local here = arg[0]:gsub("[^/]*$", "")
+package.path = here .. "../?.lua;" .. here .. "../?/init.lua;" .. package.path
+os.exit(require("omelette.cli").main(arg))

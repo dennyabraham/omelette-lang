@@ -1,0 +1,2 @@
+pub let square x = x * x
+pub let pi = 3.14
