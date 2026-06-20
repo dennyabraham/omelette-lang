@@ -109,6 +109,8 @@ function Parser:accept_comma()
   return false
 end
 
+function Parser:peek2() return self.toks[self.pos + 1] end
+
 function Parser:parse_primary()
   local t = self:peek()
   if t.type == "number" then self:next(); return { kind = "number", value = t.value, line = t.line, col = t.col } end
@@ -130,9 +132,34 @@ function Parser:parse_primary()
   end
   if self:at("punct", "[") then
     self:next()
-    local items = {}
-    if not self:at("punct", "]") then
-      repeat items[#items + 1] = self:parse_expr() until not self:accept_comma()
+    if self:at("punct", "]") then
+      self:next()
+      return { kind = "array", items = {}, line = t.line, col = t.col }
+    end
+    local first = self:parse_expr()
+    if self:at("punct", "|") then
+      self:next()
+      local quals, has_gen = {}, false
+      repeat
+        local cur, nxt = self:peek(), self:peek2()
+        if cur.type == "ident" and nxt and nxt.type == "op" and nxt.value == "<-" then
+          local name = self:next().value
+          self:expect("op", "<-")
+          local source = self:parse_expr()
+          quals[#quals + 1] = { kind = "generator", name = name, source = source }
+          has_gen = true
+        else
+          local cond = self:parse_expr()
+          quals[#quals + 1] = { kind = "guard", cond = cond }
+        end
+      until not self:accept_comma()
+      if not has_gen then self:fail("comprehension needs at least one generator (name <- source)") end
+      self:expect("punct", "]")
+      return { kind = "comprehension", yield = first, quals = quals, line = t.line, col = t.col }
+    end
+    local items = { first }
+    while self:accept_comma() do
+      items[#items + 1] = self:parse_expr()
     end
     self:expect("punct", "]")
     return { kind = "array", items = items, line = t.line, col = t.col }
