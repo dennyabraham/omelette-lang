@@ -1,0 +1,38 @@
+local h = require("spec.support.harness")
+local compiler = require("omelette.compiler")
+
+h.describe("comprehension/behavioral", function()
+  h.it("maps over a list", function()
+    local mod = assert(compiler.eval("pub let r = [ x * 2 | x <- [1, 2, 3] ]"))
+    h.eq(mod.r, { 2, 4, 6 })
+  end)
+  h.it("filters with a guard", function()
+    local mod = assert(compiler.eval(
+      "let even x = x % 2 == 0\npub let r = [ x | x <- [1, 2, 3, 4], even(x) ]"))
+    h.eq(mod.r, { 2, 4 })
+  end)
+  h.it("produces a cartesian product from two generators (x outer)", function()
+    local mod = assert(compiler.eval("pub let r = [ [x, y] | x <- [1, 2], y <- [3, 4] ]"))
+    h.eq(mod.r, { { 1, 3 }, { 1, 4 }, { 2, 3 }, { 2, 4 } })
+  end)
+  h.it("applies interleaved guards that reference earlier generators", function()
+    local mod = assert(compiler.eval(
+      "pub let r = [ [x, y] | x <- [1, 2, 3], x > 1, y <- [10, 20], x + y < 22 ]"))
+    h.eq(mod.r, { { 2, 10 }, { 3, 10 } })
+  end)
+  h.it("works inline as a call argument (proves the IIFE)", function()
+    local mod = assert(compiler.eval(
+      'pub let s = table.concat([ x * 2 | x <- [1, 2, 3] ], ",")'))
+    h.eq(mod.s, "2,4,6")
+  end)
+  h.it("works as the left side of a pipe", function()
+    local mod = assert(compiler.eval(
+      'pub let s = [ x * 2 | x <- [1, 2, 3] ] |> table.concat(",")'))
+    h.eq(mod.s, "2,4,6")
+  end)
+  h.it("nests comprehensions (distinct accumulators)", function()
+    local mod = assert(compiler.eval(
+      "pub let r = [ [ y * 10 | y <- row ] | row <- [[1, 2], [3]] ]"))
+    h.eq(mod.r, { { 10, 20 }, { 30 } })
+  end)
+end)

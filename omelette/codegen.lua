@@ -57,6 +57,33 @@ local function gen_pipe(node, ctx)
   return expr(rhs, ctx) .. "(" .. expr(node.lhs, ctx) .. ")"
 end
 
+-- a comprehension compiles to a self-contained IIFE so it is valid in any
+-- expression position. Generators become `for _, name in ipairs(src) do`,
+-- guards become `if cond then`, opened in qualifier order; the innermost body
+-- appends the yield expression to a fresh accumulator table.
+local function gen_comprehension(node, ctx)
+  ctx.acc = (ctx.acc or 0) + 1
+  local acc = "__acc" .. ctx.acc
+  local lines = { "(function()", "  local " .. acc .. " = {}" }
+  local pad = "  "
+  for _, q in ipairs(node.quals) do
+    if q.kind == "generator" then
+      lines[#lines + 1] = pad .. "for _, " .. q.name .. " in ipairs(" .. expr(q.source, ctx) .. ") do"
+    else
+      lines[#lines + 1] = pad .. "if " .. expr(q.cond, ctx) .. " then"
+    end
+    pad = pad .. "  "
+  end
+  lines[#lines + 1] = pad .. acc .. "[#" .. acc .. " + 1] = " .. expr(node.yield, ctx)
+  for _ = 1, #node.quals do
+    pad = pad:sub(1, #pad - 2)
+    lines[#lines + 1] = pad .. "end"
+  end
+  lines[#lines + 1] = "  return " .. acc
+  lines[#lines + 1] = "end)()"
+  return table.concat(lines, "\n")
+end
+
 expr = function(node, ctx)
   local k = node.kind
   if k == "number" then return tostring(node.value) end
@@ -91,6 +118,7 @@ expr = function(node, ctx)
   if k == "lambda" then
     return "function(" .. table.concat(node.params, ", ") .. ")\n" .. gen_fn_body(node.body, ctx, "  ") .. "\nend"
   end
+  if k == "comprehension" then return gen_comprehension(node, ctx) end
   error("codegen: cannot emit expression of kind '" .. tostring(k) .. "'")
 end
 
