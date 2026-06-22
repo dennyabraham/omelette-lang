@@ -66,7 +66,7 @@ end
 
 function Parser:parse_unary()
   local t = self:peek()
-  if self:at("op", "-") or self:at("keyword", "not") then
+  if self:at("op", "-") or self:at("op", "#") or self:at("keyword", "not") then
     self:next()
     local operand = self:parse_unary()
     return { kind = "unop", op = t.value, operand = operand, line = t.line, col = t.col }

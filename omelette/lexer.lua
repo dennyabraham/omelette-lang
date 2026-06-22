@@ -11,7 +11,7 @@ local KEYWORDS = {
 -- longest first so greedy matching works
 local MULTI_OPS = { "|>", "->", "..", "==", "~=", "<=", ">=", "<-" }
 local SINGLE_OPS = { ["+"]=true,["-"]=true,["*"]=true,["/"]=true,["%"]=true,
-  ["<"]=true,[">"]=true,["="]=true }
+  ["<"]=true,[">"]=true,["="]=true,["#"]=true }
 local PUNCT = { ["("]=true,[")"]=true,["{"]=true,["}"]=true,["["]=true,
   ["]"]=true,[","]=true,["."]=true,["|"]=true }
 

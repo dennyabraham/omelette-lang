@@ -97,7 +97,7 @@ expr = function(node, ctx)
     return "(" .. expr(node.lhs, ctx) .. " " .. BINOP_LUA[node.op] .. " " .. expr(node.rhs, ctx) .. ")"
   end
   if k == "unop" then
-    local op = node.op == "not" and "not " or "-"
+    local op = node.op == "not" and "not " or node.op  -- "not " | "-" | "#"
     return "(" .. op .. expr(node.operand, ctx) .. ")"
   end
   if k == "call" then return gen_call(node, ctx) end
