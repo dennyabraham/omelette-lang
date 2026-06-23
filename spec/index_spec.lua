@@ -63,4 +63,15 @@ h.describe("read indexing", function()
     h.eq(e.kind, "unop"); h.eq(e.op, "#")
     h.eq(e.operand.kind, "index")
   end)
+  h.it("parenthesizes a lambda-literal index object (Lua 5.1; surface-unreachable, codegen-level)", function()
+    -- the parser can't put a bare `fn` in object position, so build the AST directly
+    local node = {
+      kind = "index",
+      obj = { kind = "lambda", params = { "x" }, body = { kind = "ident", name = "x" } },
+      key = { kind = "number", value = 1 },
+    }
+    local out = codegen.expr(node, codegen.new_ctx())
+    h.truthy(out:sub(1, 1) == "(")            -- wrapped, not bare `function...end[1]`
+    h.truthy(out:find("%)%[1%]") ~= nil)      -- closes with )[1]
+  end)
 end)

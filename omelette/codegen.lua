@@ -120,10 +120,17 @@ expr = function(node, ctx)
   end
   if k == "comprehension" then return gen_comprehension(node, ctx) end
   if k == "index" then
-    local ok = node.obj.kind
+    local obj_kind = node.obj.kind
     local obj_code = expr(node.obj, ctx)
-    -- Lua 5.1 disallows indexing a table constructor or string literal directly; wrap in parens
-    if ok == "array" or ok == "table" or ok == "string" then obj_code = "(" .. obj_code .. ")" end
+    -- Lua 5.1 disallows indexing a bare constructor/string/function literal directly
+    -- (`{..}[k]`, `"s"[k]`, `function()end[k]` are syntax errors), so wrap those in parens.
+    -- Other object kinds need no wrapping: binop/unop already self-parenthesize; call/pipe/
+    -- comprehension yield call results; field/ident/index are already valid index targets.
+    -- (lambda is unreachable as an index object today since the parser can't put a bare `fn`
+    -- in object position, but it is included so the guard is structurally complete.)
+    if obj_kind == "array" or obj_kind == "table" or obj_kind == "string" or obj_kind == "lambda" then
+      obj_code = "(" .. obj_code .. ")"
+    end
     return obj_code .. "[" .. expr(node.key, ctx) .. "]"
   end
   error("codegen: cannot emit expression of kind '" .. tostring(k) .. "'")
