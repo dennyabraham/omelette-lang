@@ -66,7 +66,7 @@ end
 
 function Parser:parse_unary()
   local t = self:peek()
-  if self:at("op", "-") or self:at("keyword", "not") then
+  if self:at("op", "-") or self:at("op", "#") or self:at("keyword", "not") then
     self:next()
     local operand = self:parse_unary()
     return { kind = "unop", op = t.value, operand = operand, line = t.line, col = t.col }
@@ -97,6 +97,11 @@ function Parser:parse_postfix()
       end
       self:expect("punct", ")")
       node = { kind = "call", fn = node, args = args, line = t.line, col = t.col }
+    elseif self:at("punct", "[") then
+      local t = self:next()
+      local key = self:parse_expr()
+      self:expect("punct", "]")
+      node = { kind = "index", obj = node, key = key, line = t.line, col = t.col }
     else
       break
     end
