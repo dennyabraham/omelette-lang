@@ -1,0 +1,46 @@
+local h = require("spec.support.harness")
+local lexer = require("omelette.lexer")
+local parser = require("omelette.parser")
+local codegen = require("omelette.codegen")
+local compiler = require("omelette.compiler")
+local function expr(s) return assert(parser.parse_expr_string(s)) end
+local function gen(s) return codegen.expr(assert(parser.parse_expr_string(s)), codegen.new_ctx()) end
+
+h.describe("range literals", function()
+  h.it("lexes `to` as a keyword", function()
+    local toks = assert(lexer.tokenize("1 to 5"))
+    h.eq(toks[2], { type = "keyword", value = "to", line = 1, col = 3 })
+  end)
+  h.it("parses [a to b] as a range node", function()
+    local e = expr("[1 to 5]")
+    h.eq(e.kind, "range")
+    h.eq(e.from.value, 1)
+    h.eq(e.to.value, 5)
+  end)
+  h.it("still parses arrays and comprehensions (regression)", function()
+    h.eq(expr("[1, 2, 3]").kind, "array")
+    h.eq(expr("[]").kind, "array")
+    h.eq(expr("[ x | x <- xs ]").kind, "comprehension")
+  end)
+  h.it("emits an IIFE with a numeric for", function()
+    h.eq(gen("[1 to 5]"),
+      "(function()\n  local __acc1 = {}\n  for __i = 1, 5 do\n"
+      .. "    __acc1[#__acc1 + 1] = __i\n  end\n  return __acc1\nend)()")
+  end)
+  h.it("behavioral: inclusive ascending, empty when from > to", function()
+    local mod = assert(compiler.eval("pub let a = [1 to 5]\npub let b = [5 to 1]"))
+    h.eq(mod.a, { 1, 2, 3, 4, 5 })
+    h.eq(mod.b, {})
+  end)
+  h.it("behavioral: range feeds a comprehension", function()
+    local mod = assert(compiler.eval("pub let squares = [ x * x | x <- [1 to 3] ]"))
+    h.eq(mod.squares, { 1, 4, 9 })
+  end)
+  h.it("behavioral: reverse via range + indexing", function()
+    local mod = assert(compiler.eval(table.concat({
+      "let reverse xs = [ xs[#xs - i + 1] | i <- [1 to #xs] ]",
+      "pub let r = reverse([10, 20, 30])",
+    }, "\n")))
+    h.eq(mod.r, { 30, 20, 10 })
+  end)
+end)

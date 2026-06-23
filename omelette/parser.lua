@@ -142,6 +142,12 @@ function Parser:parse_primary()
       return { kind = "array", items = {}, line = t.line, col = t.col }
     end
     local first = self:parse_expr()
+    if self:at("keyword", "to") then
+      self:next()
+      local to_expr = self:parse_expr()
+      self:expect("punct", "]")
+      return { kind = "range", from = first, to = to_expr, line = t.line, col = t.col }
+    end
     if self:at("punct", "|") then
       self:next()
       local quals, has_gen = {}, false
