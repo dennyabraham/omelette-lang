@@ -68,7 +68,13 @@ local function gen_comprehension(node, ctx)
   local pad = "  "
   for _, q in ipairs(node.quals) do
     if q.kind == "generator" then
-      lines[#lines + 1] = pad .. "for _, " .. q.name .. " in ipairs(" .. expr(q.source, ctx) .. ") do"
+      if q.value_name then
+        lines[#lines + 1] = pad .. "for " .. q.name .. ", " .. q.value_name
+          .. " in pairs(" .. expr(q.source, ctx) .. ") do"
+      else
+        lines[#lines + 1] = pad .. "for _, " .. q.name
+          .. " in ipairs(" .. expr(q.source, ctx) .. ") do"
+      end
     else
       lines[#lines + 1] = pad .. "if " .. expr(q.cond, ctx) .. " then"
     end
