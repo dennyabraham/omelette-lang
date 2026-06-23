@@ -119,6 +119,13 @@ expr = function(node, ctx)
     return "function(" .. table.concat(node.params, ", ") .. ")\n" .. gen_fn_body(node.body, ctx, "  ") .. "\nend"
   end
   if k == "comprehension" then return gen_comprehension(node, ctx) end
+  if k == "index" then
+    local ok = node.obj.kind
+    local obj_code = expr(node.obj, ctx)
+    -- Lua 5.1 disallows indexing a table constructor directly; wrap in parens
+    if ok == "array" or ok == "table" then obj_code = "(" .. obj_code .. ")" end
+    return obj_code .. "[" .. expr(node.key, ctx) .. "]"
+  end
   error("codegen: cannot emit expression of kind '" .. tostring(k) .. "'")
 end
 

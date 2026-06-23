@@ -1,0 +1,48 @@
+local h = require("spec.support.harness")
+local parser = require("omelette.parser")
+local codegen = require("omelette.codegen")
+local compiler = require("omelette.compiler")
+local function expr(s) return assert(parser.parse_expr_string(s)) end
+local function gen(s) return codegen.expr(assert(parser.parse_expr_string(s)), codegen.new_ctx()) end
+
+h.describe("read indexing", function()
+  h.it("parses xs[i] as an index node", function()
+    local e = expr("xs[1]")
+    h.eq(e.kind, "index")
+    h.eq(e.obj.name, "xs")
+    h.eq(e.key.value, 1)
+  end)
+  h.it("nests chained indexing grid[i][j]", function()
+    local e = expr("grid[i][j]")
+    h.eq(e.kind, "index")
+    h.eq(e.key.name, "j")
+    h.eq(e.obj.kind, "index")
+    h.eq(e.obj.key.name, "i")
+  end)
+  h.it("still parses a bare array literal in primary position", function()
+    h.eq(expr("[1, 2, 3]").kind, "array")
+  end)
+  h.it("rejects a two-key index", function()
+    local _, err = parser.parse_expr_string("xs[1, 2]")
+    h.truthy(err ~= nil)
+  end)
+  h.it("emits obj[key]", function()
+    h.eq(gen("xs[1]"), "xs[1]")
+    h.eq(gen('record["key"]'), 'record["key"]')
+  end)
+  h.it("behavioral: index into an array and a record", function()
+    local mod = assert(compiler.eval('pub let a = [10, 20, 30][2]\npub let b = { x = 1, y = 2 }["y"]'))
+    h.eq(mod.a, 20)
+    h.eq(mod.b, 2)
+  end)
+  h.it("behavioral: indexing + length enable a tail-recursive fold", function()
+    local mod = assert(compiler.eval(table.concat({
+      "let sum_go xs acc i =",
+      "  if i > #xs then acc",
+      "  else sum_go(xs, acc + xs[i], i + 1)",
+      "pub let sum xs = sum_go(xs, 0, 1)",
+    }, "\n")))
+    h.eq(mod.sum({ 3, 4, 5 }), 12)
+    h.eq(mod.sum({}), 0)
+  end)
+end)

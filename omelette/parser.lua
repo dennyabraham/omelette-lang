@@ -97,6 +97,11 @@ function Parser:parse_postfix()
       end
       self:expect("punct", ")")
       node = { kind = "call", fn = node, args = args, line = t.line, col = t.col }
+    elseif self:at("punct", "[") then
+      local t = self:next()
+      local key = self:parse_expr()
+      self:expect("punct", "]")
+      node = { kind = "index", obj = node, key = key, line = t.line, col = t.col }
     else
       break
     end
