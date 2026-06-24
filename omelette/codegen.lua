@@ -254,20 +254,13 @@ function M.program(program)
     if node.kind ~= "let" then
       -- bare top-level expression (side effect)
       lines[#lines + 1] = M.expr(node, ctx)
-    elseif node.is_pub and node.params then
-      lines[#lines + 1] = "function M." .. node.name .. "(" .. table.concat(node.params, ", ") .. ")"
-      lines[#lines + 1] = gen_fn_body(node.value, ctx, "  ")
-      lines[#lines + 1] = "end"
-    elseif node.is_pub then
-      if node.value.kind == "if" or node.value.kind == "match" or node.value.kind == "block" then
-        lines[#lines + 1] = "local __" .. node.name
-        lines[#lines + 1] = gen_value("__" .. node.name, node.value, ctx, "")
-        lines[#lines + 1] = "M." .. node.name .. " = __" .. node.name
-      else
-        lines[#lines + 1] = "M." .. node.name .. " = " .. M.expr(node.value, ctx)
-      end
     else
+      -- every binding is a module-level local (so siblings reference it as an
+      -- upvalue and functions recurse by name); pub bindings are also aliased onto M
       lines[#lines + 1] = gen_local_let(node, ctx, "")
+      if node.is_pub then
+        lines[#lines + 1] = "M." .. node.name .. " = " .. node.name
+      end
     end
   end
   lines[#lines + 1] = "return M"

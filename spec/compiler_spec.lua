@@ -5,7 +5,8 @@ h.describe("compiler", function()
   h.it("compiles source to lua text", function()
     local lua, err = compiler.compile("pub let add x y = x + y")
     h.truthy(err == nil)
-    h.truthy(lua:find("function M%.add"))
+    h.truthy(lua:find("local function add"))
+    h.truthy(lua:find("M%.add = add"))
   end)
   h.it("surfaces lex/parse errors as diagnostics", function()
     local lua, err = compiler.compile('let x = "oops')
@@ -45,5 +46,18 @@ h.describe("compiler", function()
     local mod = assert(compiler.eval("pub let g = fn x -> if x then 1 else 2"))
     h.eq(mod.g(true), 1)
     h.eq(mod.g(false), 2)
+  end)
+  h.it("behavioral: a pub function can recurse by name", function()
+    local mod = assert(compiler.eval(table.concat({
+      "pub let fact n = if n <= 1 then 1 else n * fact(n - 1)",
+    }, "\n")))
+    h.eq(mod.fact(5), 120)
+  end)
+  h.it("behavioral: a pub function can call another pub function", function()
+    local mod = assert(compiler.eval(table.concat({
+      "pub let double x = x * 2",
+      "pub let quad x = double(double(x))",
+    }, "\n")))
+    h.eq(mod.quad(3), 12)
   end)
 end)
