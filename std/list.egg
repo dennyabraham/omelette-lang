@@ -1,0 +1,62 @@
+-- std/list.egg — list / array operations (collection-first, immutable)
+
+pub let length xs = #xs
+pub let is_empty xs = #xs == 0
+pub let first xs = xs[1]
+pub let last xs = xs[#xs]
+pub let get xs i = xs[i]
+pub let map xs f = [ f(x) | x <- xs ]
+pub let filter xs pred = [ x | x <- xs, pred(x) ]
+pub let range a b = [a to b]
+pub let reverse xs = [ xs[#xs - i + 1] | i <- [1 to #xs] ]
+
+let reduce_go xs f acc i =
+  if i > #xs then acc
+  else reduce_go(xs, f, f(acc, xs[i]), i + 1)
+pub let reduce xs f init = reduce_go(xs, f, init, 1)
+
+pub let each xs f =
+  let _drop = [ f(x) | x <- xs ]
+  nil
+
+pub let sum xs = reduce(xs, fn a b -> a + b, 0)
+pub let product xs = reduce(xs, fn a b -> a * b, 1)
+pub let all xs pred = reduce(xs, fn acc x -> acc and pred(x), true)
+pub let any xs pred = reduce(xs, fn acc x -> acc or pred(x), false)
+pub let count xs pred = reduce(xs, fn acc x -> if pred(x) then acc + 1 else acc, 0)
+
+pub let min xs =
+  if is_empty(xs) then nil
+  else reduce(xs, fn a b -> if a < b then a else b, first(xs))
+pub let max xs =
+  if is_empty(xs) then nil
+  else reduce(xs, fn a b -> if a > b then a else b, first(xs))
+
+let find_go xs pred i =
+  if i > #xs then nil
+  else if pred(xs[i]) then xs[i]
+  else find_go(xs, pred, i + 1)
+pub let find xs pred = find_go(xs, pred, 1)
+
+pub let contains xs v = any(xs, fn x -> x == v)
+
+let index_of_go xs v i =
+  if i > #xs then nil
+  else if xs[i] == v then i
+  else index_of_go(xs, v, i + 1)
+pub let index_of xs v = index_of_go(xs, v, 1)
+
+pub let take xs n = [ xs[i] | i <- [1 to n], i <= #xs ]
+pub let drop xs n = [ xs[i] | i <- [(n + 1) to #xs] ]
+
+let concat_pick a b i = if i <= #a then a[i] else b[i - #a]
+pub let concat a b = [ concat_pick(a, b, i) | i <- [1 to (#a + #b)] ]
+
+pub let sort xs =
+  let c = [ x | x <- xs ]
+  let _drop = table.sort(c)
+  c
+pub let sort_by xs cmp =
+  let c = [ x | x <- xs ]
+  let _drop = table.sort(c, cmp)
+  c

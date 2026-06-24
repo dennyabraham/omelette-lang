@@ -91,7 +91,7 @@ function Parser:parse_postfix()
             local ht = self:next()
             args[#args + 1] = { kind = "hole", line = ht.line, col = ht.col }
           else
-            args[#args + 1] = self:parse_expr()
+            args[#args + 1] = self:parse_expr_or_form()
           end
         until not self:accept_comma()
       end
