@@ -1,0 +1,26 @@
+-- std/string.egg — string operations (thin wrappers + split/join/replace)
+
+pub let length s = #s
+pub let upper s = string.upper(s)
+pub let lower s = string.lower(s)
+
+pub let trim s =
+  let r = string.gsub(s, "^%s*(.-)%s*$", "%1")
+  r
+
+pub let starts_with s prefix = string.sub(s, 1, #prefix) == prefix
+pub let ends_with s suffix = string.sub(s, #s - #suffix + 1) == suffix
+pub let contains s sub = string.find(s, sub, 1, true) ~= nil
+pub let rep s n = string.rep(s, n)
+pub let join xs sep = table.concat(xs, sep)
+
+let append_pick xs x i = if i <= #xs then xs[i] else x
+let append xs x = [ append_pick(xs, x, i) | i <- [1 to (#xs + 1)] ]
+
+let split_go s sep acc start =
+  let idx = string.find(s, sep, start, true)
+  if idx == nil then append(acc, string.sub(s, start))
+  else split_go(s, sep, append(acc, string.sub(s, start, idx - 1)), idx + #sep)
+pub let split s sep = split_go(s, sep, [], 1)
+
+pub let replace s old new = join(split(s, old), new)
