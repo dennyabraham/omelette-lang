@@ -43,4 +43,11 @@ h.describe("range literals", function()
     }, "\n")))
     h.eq(mod.r, { 30, 20, 10 })
   end)
+  h.it("behavioral: a range IIFE can be indexed directly (range-then-index)", function()
+    -- a range is a call result `(function..end)()`, so it must NOT get the literal
+    -- index-parens wrap; (...)()[k] is valid Lua. Locks this interaction.
+    local mod = assert(compiler.eval("pub let a = [1 to 3][2]\npub let b = [10 to 20][5]"))
+    h.eq(mod.a, 2)
+    h.eq(mod.b, 14)
+  end)
 end)
