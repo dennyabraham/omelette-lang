@@ -4,7 +4,7 @@ A consolidated, durable record of things intentionally **not** built yet, with t
 rationale and where the decision was made. Individual specs' Non-Goals sections remain
 the authoritative detail; this file is the index so nothing gets lost between cycles.
 
-_Last updated: 2026-06-23 (after range literals + key/value generators)._
+_Last updated: 2026-06-24 (after the standard library)._
 
 ## Language features
 
@@ -13,14 +13,23 @@ _Last updated: 2026-06-23 (after range literals + key/value generators)._
   _Source: range-dict-comprehensions spec (Non-Goals)._
 - **Descending ranges / custom step** — `[5 to 1]` is *empty*, not descending; no
   `[a, b .. c]` step form. _Source: range-dict-comprehensions spec._
-- **`if` / `match` as sub-expressions** — currently they only work in binding/return/branch
-  position (a bare `if` can't be a call argument). The IIFE technique used for
-  comprehensions/ranges could be applied to them. _Source: comprehensions whole-branch review._
+- **`if` / `match` as sub-expressions** — they only work in binding/return/branch position;
+  a bare `if`/`match` can't be a value sub-expression. Since the stdlib cycle made call
+  arguments parse via `parse_expr_or_form`, `f(if c then a else b)` now *parses* but fails
+  at codegen (`cannot emit expression of kind 'if'`) — a parse→codegen failure-quality
+  regression. Fix by applying the comprehension/range IIFE lowering to `if`/`match` (so they
+  work everywhere), or reject them at parse time in arg position. _Source: comprehensions +
+  stdlib whole-branch reviews._
+- **Top-level forward references / mutual recursion** — since the stdlib codegen change emits
+  top-level bindings as `local function`/`local x` in source order (no hoisting), a function
+  that calls a *later*-defined sibling compiles but fails at runtime (nil global). Definitions
+  must currently precede uses; mutually-recursive top-level functions are impossible. Fix by
+  forward-declaring all top-level locals (`local a, b, …` then assign). _Source: stdlib
+  whole-branch review._
 - **Sum / variant types, exhaustiveness checking, type aliases.** _Source: v1 spec._
 - **Custom operators, macros.** _Source: v1 spec._
-- **`pub let` recursion-by-name** — a `pub let f` can't call itself by bare name (it's
-  `function M.f`); the local-impl + `pub` alias pattern is the current workaround.
-  _Source: indexing-length spec._
+- **~~`pub let` recursion-by-name~~** — ✅ **DONE** (stdlib cycle): top-level bindings now emit
+  as `local` + `M.name = name`, so `pub` functions recurse and cross-reference by name.
 - **Index assignment `xs[i] = v`** — intentionally omitted; indexing is read-only to keep
   the surface immutable. _Source: indexing-length spec._
 - **String character indexing `s[i]`** — Lua returns `nil`; use `string.sub`. `#s` (length)
