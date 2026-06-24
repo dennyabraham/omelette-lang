@@ -68,7 +68,13 @@ local function gen_comprehension(node, ctx)
   local pad = "  "
   for _, q in ipairs(node.quals) do
     if q.kind == "generator" then
-      lines[#lines + 1] = pad .. "for _, " .. q.name .. " in ipairs(" .. expr(q.source, ctx) .. ") do"
+      if q.value_name then
+        lines[#lines + 1] = pad .. "for " .. q.name .. ", " .. q.value_name
+          .. " in pairs(" .. expr(q.source, ctx) .. ") do"
+      else
+        lines[#lines + 1] = pad .. "for _, " .. q.name
+          .. " in ipairs(" .. expr(q.source, ctx) .. ") do"
+      end
     else
       lines[#lines + 1] = pad .. "if " .. expr(q.cond, ctx) .. " then"
     end
@@ -82,6 +88,21 @@ local function gen_comprehension(node, ctx)
   lines[#lines + 1] = "  return " .. acc
   lines[#lines + 1] = "end)()"
   return table.concat(lines, "\n")
+end
+
+-- a range literal [a to b] compiles to a self-contained IIFE building {a..b}
+local function gen_range(node, ctx)
+  ctx.acc = (ctx.acc or 0) + 1
+  local acc = "__acc" .. ctx.acc
+  return table.concat({
+    "(function()",
+    "  local " .. acc .. " = {}",
+    "  for __i = " .. expr(node.from, ctx) .. ", " .. expr(node.to, ctx) .. " do",
+    "    " .. acc .. "[#" .. acc .. " + 1] = __i",
+    "  end",
+    "  return " .. acc,
+    "end)()",
+  }, "\n")
 end
 
 expr = function(node, ctx)
@@ -119,6 +140,7 @@ expr = function(node, ctx)
     return "function(" .. table.concat(node.params, ", ") .. ")\n" .. gen_fn_body(node.body, ctx, "  ") .. "\nend"
   end
   if k == "comprehension" then return gen_comprehension(node, ctx) end
+  if k == "range" then return gen_range(node, ctx) end
   if k == "index" then
     local obj_kind = node.obj.kind
     local obj_code = expr(node.obj, ctx)

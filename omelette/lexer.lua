@@ -5,7 +5,7 @@ local KEYWORDS = {
   ["let"]=true, ["pub"]=true, ["fn"]=true, ["if"]=true, ["then"]=true,
   ["else"]=true, ["match"]=true, ["with"]=true, ["true"]=true,
   ["false"]=true, ["nil"]=true, ["and"]=true, ["or"]=true, ["not"]=true,
-  ["lua"]=true,
+  ["lua"]=true, ["to"]=true,
 }
 
 -- longest first so greedy matching works

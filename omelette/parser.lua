@@ -142,16 +142,32 @@ function Parser:parse_primary()
       return { kind = "array", items = {}, line = t.line, col = t.col }
     end
     local first = self:parse_expr()
+    if self:at("keyword", "to") then
+      self:next()
+      local to_expr = self:parse_expr()
+      self:expect("punct", "]")
+      return { kind = "range", from = first, to = to_expr, line = t.line, col = t.col }
+    end
     if self:at("punct", "|") then
       self:next()
       local quals, has_gen = {}, false
       repeat
         local cur, nxt = self:peek(), self:peek2()
+        local t3, t4 = self.toks[self.pos + 2], self.toks[self.pos + 3]
         if cur.type == "ident" and nxt and nxt.type == "op" and nxt.value == "<-" then
           local name = self:next().value
           self:expect("op", "<-")
           local source = self:parse_expr()
-          quals[#quals + 1] = { kind = "generator", name = name, source = source }
+          quals[#quals + 1] = { kind = "generator", name = name, value_name = nil, source = source }
+          has_gen = true
+        elseif cur.type == "ident" and nxt and nxt.type == "punct" and nxt.value == ","
+            and t3 and t3.type == "ident" and t4 and t4.type == "op" and t4.value == "<-" then
+          local name = self:next().value
+          self:expect("punct", ",")
+          local value_name = self:expect("ident").value
+          self:expect("op", "<-")
+          local source = self:parse_expr()
+          quals[#quals + 1] = { kind = "generator", name = name, value_name = value_name, source = source }
           has_gen = true
         else
           local cond = self:parse_expr()
