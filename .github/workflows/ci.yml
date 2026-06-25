@@ -1,0 +1,24 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        lua: ["luajit-2.1.0-beta3", "5.4"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: ${{ matrix.lua }}
+      - name: Run test suite
+        run: lua spec/run.lua
+      - name: Amalgamation smoke test
+        run: |
+          mkdir -p dist
+          lua build/amalgamate.lua > dist/omelette
+          lua dist/omelette build spec/fixtures/hello.egg | grep -q "function M.greet"
