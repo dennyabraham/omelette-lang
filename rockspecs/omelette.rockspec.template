@@ -1,0 +1,29 @@
+rockspec_format = "3.0"
+package = "omelette"
+version = "@VERSION@-1"
+source = {
+  url = "git+https://github.com/dennyabraham/omelette-lang.git",
+  tag = "@TAG@",
+}
+description = {
+  summary = "An ML-flavored language that transpiles to readable Lua 5.1",
+  homepage = "https://github.com/dennyabraham/omelette-lang",
+  license = "MIT",
+}
+dependencies = { "lua >= 5.1" }
+build = {
+  type = "builtin",
+  modules = {
+    ["omelette"]          = "omelette/init.lua",
+    ["omelette.lexer"]    = "omelette/lexer.lua",
+    ["omelette.errors"]   = "omelette/errors.lua",
+    ["omelette.resolver"] = "omelette/resolver.lua",
+    ["omelette.parser"]   = "omelette/parser.lua",
+    ["omelette.codegen"]  = "omelette/codegen.lua",
+    ["omelette.compiler"] = "omelette/compiler.lua",
+    ["omelette.searcher"] = "omelette/searcher.lua",
+    ["omelette.repl"]     = "omelette/repl.lua",
+    ["omelette.cli"]      = "omelette/cli.lua",
+  },
+  install = { bin = { omelette = "bin/omelette" } },
+}
