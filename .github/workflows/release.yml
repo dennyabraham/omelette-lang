@@ -1,0 +1,44 @@
+name: Release
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      HAS_ROCKS_KEY: ${{ secrets.LUAROCKS_API_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "luajit-2.1.0-beta3"
+      - uses: leafo/gh-actions-luarocks@v4
+      - name: Validate tag matches init.lua version
+        run: lua scripts/check-version.lua "${GITHUB_REF_NAME}"
+      - name: Run test suite
+        run: lua spec/run.lua
+      - name: Build single-file omelette
+        run: |
+          mkdir -p dist
+          lua build/amalgamate.lua > dist/omelette
+          chmod +x dist/omelette
+      - name: Smoke-test the artifact
+        run: lua dist/omelette build spec/fixtures/hello.egg | grep -q "function M.greet"
+      - name: Extract release notes
+        run: lua scripts/changelog.lua "${GITHUB_REF_NAME#v}" < CHANGELOG.md > RELEASE_NOTES.md
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: RELEASE_NOTES.md
+          files: dist/omelette
+      - name: Publish to LuaRocks
+        if: ${{ env.HAS_ROCKS_KEY == 'true' && github.event.repository.private == false }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -e "s/@VERSION@/${VERSION}/g" -e "s/@TAG@/${GITHUB_REF_NAME}/g" \
+            rockspecs/omelette.rockspec.template > "omelette-${VERSION}-1.rockspec"
+          luarocks upload "omelette-${VERSION}-1.rockspec" --api-key="${{ secrets.LUAROCKS_API_KEY }}"
