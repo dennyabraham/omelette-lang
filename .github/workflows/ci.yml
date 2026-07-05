@@ -21,4 +21,4 @@ jobs:
         run: |
           mkdir -p dist
           lua build/amalgamate.lua > dist/omelette
-          lua dist/omelette build spec/fixtures/hello.egg | grep -q "function M.greet"
+          lua dist/omelette build spec/fixtures/hello.egg | grep -q "M.greet = greet"
