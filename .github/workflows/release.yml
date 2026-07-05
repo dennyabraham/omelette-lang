@@ -7,6 +7,8 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       HAS_ROCKS_KEY: ${{ secrets.LUAROCKS_API_KEY != '' }}
     steps:
@@ -27,7 +29,7 @@ jobs:
           lua build/amalgamate.lua > dist/omelette
           chmod +x dist/omelette
       - name: Smoke-test the artifact
-        run: lua dist/omelette build spec/fixtures/hello.egg | grep -q "function M.greet"
+        run: lua dist/omelette build spec/fixtures/hello.egg | grep -q "M.greet = greet"
       - name: Extract release notes
         run: lua scripts/changelog.lua "${GITHUB_REF_NAME#v}" < CHANGELOG.md > RELEASE_NOTES.md
       - name: Create GitHub Release
