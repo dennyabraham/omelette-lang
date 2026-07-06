@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        lua: ["luajit-2.1.0-beta3", "5.4"]
+        lua: ["luajit", "5.4"]
     steps:
       - uses: actions/checkout@v4
       - uses: leafo/gh-actions-lua@v10
