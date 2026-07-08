@@ -12,7 +12,7 @@ jobs:
         lua: ["luajit", "5.4"]
     steps:
       - uses: actions/checkout@v4
-      - uses: leafo/gh-actions-lua@v10
+      - uses: leafo/gh-actions-lua@v13
         with:
           luaVersion: ${{ matrix.lua }}
       - name: Run test suite
