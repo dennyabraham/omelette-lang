@@ -42,9 +42,10 @@ _Last updated: 2026-07-13 (after CI/release + top-level mutual recursion)._
 
 ## Tooling & infrastructure
 
-- **CI & release automation** — fully specced (`docs/superpowers/specs/2026-06-21-omelette-ci-release-design.md`),
-  build cycle not yet executed. LuaRocks publish is gated on the repo being public + a
-  `LUAROCKS_API_KEY` secret. _Status: specced, parked._
+- **~~CI & release automation~~** — ✅ **DONE** (merged; CI green under LuaJIT + Lua 5.4).
+  Remaining opt-ins when ready: **LuaRocks publish** activates once the repo is public and a
+  `LUAROCKS_API_KEY` secret is set (the release workflow's step is already gated on both);
+  the first tagged release requires a matching `## [X.Y.Z]` CHANGELOG entry.
 - **Performance / benchmark harness** — compare codegen quality vs hand-written Lua. _Source: v1 spec._
 - **`omelette test`** (thin busted wrapper), **formatter** (`eggfmt`), **LSP**. _Source: v1 spec._
 - **Full source maps** — beyond the light `--[[omelette:LINE]]` comments. _Source: v1 spec._
