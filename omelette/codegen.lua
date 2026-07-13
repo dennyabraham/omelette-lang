@@ -247,17 +247,39 @@ gen_fn_body = function(node, ctx, pad)
   return pad .. "return " .. M.expr(node, ctx)
 end
 
+-- like gen_local_let but assigns to an already-declared (forward-declared) local.
+-- Used only at module top level, where all binding names are declared up front,
+-- so top-level functions can reference each other in any order.
+local function gen_top_assign(node, ctx)
+  if node.params then
+    local body = gen_fn_body(node.value, ctx, "  ")
+    return "function " .. node.name .. "(" .. table.concat(node.params, ", ") .. ")\n"
+      .. body .. "\nend"
+  end
+  if node.value.kind == "if" or node.value.kind == "match" or node.value.kind == "block" then
+    return gen_value(node.name, node.value, ctx, "")
+  end
+  return node.name .. " = " .. M.expr(node.value, ctx)
+end
+
 function M.program(program)
   local ctx = M.new_ctx()
   local lines = { "local M = {}" }
+  -- forward-declare all top-level let names so top-level functions can reference
+  -- each other (and recurse) regardless of definition order
+  local names = {}
+  for _, node in ipairs(program.stmts) do
+    if node.kind == "let" then names[#names + 1] = node.name end
+  end
+  if #names > 0 then
+    lines[#lines + 1] = "local " .. table.concat(names, ", ")
+  end
   for _, node in ipairs(program.stmts) do
     if node.kind ~= "let" then
       -- bare top-level expression (side effect)
       lines[#lines + 1] = M.expr(node, ctx)
     else
-      -- every binding is a module-level local (so siblings reference it as an
-      -- upvalue and functions recurse by name); pub bindings are also aliased onto M
-      lines[#lines + 1] = gen_local_let(node, ctx, "")
+      lines[#lines + 1] = gen_top_assign(node, ctx)
       if node.is_pub then
         lines[#lines + 1] = "M." .. node.name .. " = " .. node.name
       end
