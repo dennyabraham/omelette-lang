@@ -4,7 +4,7 @@ A consolidated, durable record of things intentionally **not** built yet, with t
 rationale and where the decision was made. Individual specs' Non-Goals sections remain
 the authoritative detail; this file is the index so nothing gets lost between cycles.
 
-_Last updated: 2026-06-24 (after the standard library)._
+_Last updated: 2026-07-13 (after CI/release + top-level mutual recursion)._
 
 ## Language features
 
@@ -20,12 +20,11 @@ _Last updated: 2026-06-24 (after the standard library)._
   regression. Fix by applying the comprehension/range IIFE lowering to `if`/`match` (so they
   work everywhere), or reject them at parse time in arg position. _Source: comprehensions +
   stdlib whole-branch reviews._
-- **Top-level forward references / mutual recursion** — since the stdlib codegen change emits
-  top-level bindings as `local function`/`local x` in source order (no hoisting), a function
-  that calls a *later*-defined sibling compiles but fails at runtime (nil global). Definitions
-  must currently precede uses; mutually-recursive top-level functions are impossible. Fix by
-  forward-declaring all top-level locals (`local a, b, …` then assign). _Source: stdlib
-  whole-branch review._
+- **~~Top-level forward references / mutual recursion~~** — ✅ **DONE** (2026-07-13):
+  `M.program` now forward-declares all top-level locals (`local a, b, …`) then assigns, so
+  top-level functions reference each other in any order (mutual recursion / forward refs).
+  (Value bindings that eagerly read a not-yet-computed sibling remain a runtime error —
+  inherent.)
 - **Sum / variant types, exhaustiveness checking, type aliases.** _Source: v1 spec._
 - **Custom operators, macros.** _Source: v1 spec._
 - **~~`pub let` recursion-by-name~~** — ✅ **DONE** (stdlib cycle): top-level bindings now emit
