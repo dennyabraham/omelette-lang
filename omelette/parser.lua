@@ -116,6 +116,38 @@ end
 
 function Parser:peek2() return self.toks[self.pos + 1] end
 
+-- parse a comprehension qualifier list (shared by list and dict comprehensions):
+-- single generator `x <- src`, kv generator `k, v <- src`, or guard `<expr>`.
+-- Requires at least one generator.
+function Parser:parse_qualifiers()
+  local quals, has_gen = {}, false
+  repeat
+    local cur, nxt = self:peek(), self:peek2()
+    local t3, t4 = self.toks[self.pos + 2], self.toks[self.pos + 3]
+    if cur.type == "ident" and nxt and nxt.type == "op" and nxt.value == "<-" then
+      local name = self:next().value
+      self:expect("op", "<-")
+      local source = self:parse_expr()
+      quals[#quals + 1] = { kind = "generator", name = name, value_name = nil, source = source }
+      has_gen = true
+    elseif cur.type == "ident" and nxt and nxt.type == "punct" and nxt.value == ","
+        and t3 and t3.type == "ident" and t4 and t4.type == "op" and t4.value == "<-" then
+      local name = self:next().value
+      self:expect("punct", ",")
+      local value_name = self:expect("ident").value
+      self:expect("op", "<-")
+      local source = self:parse_expr()
+      quals[#quals + 1] = { kind = "generator", name = name, value_name = value_name, source = source }
+      has_gen = true
+    else
+      local cond = self:parse_expr()
+      quals[#quals + 1] = { kind = "guard", cond = cond }
+    end
+  until not self:accept_comma()
+  if not has_gen then self:fail("comprehension needs at least one generator (name <- source)") end
+  return quals
+end
+
 function Parser:parse_primary()
   local t = self:peek()
   if t.type == "number" then self:next(); return { kind = "number", value = t.value, line = t.line, col = t.col } end
@@ -150,31 +182,7 @@ function Parser:parse_primary()
     end
     if self:at("punct", "|") then
       self:next()
-      local quals, has_gen = {}, false
-      repeat
-        local cur, nxt = self:peek(), self:peek2()
-        local t3, t4 = self.toks[self.pos + 2], self.toks[self.pos + 3]
-        if cur.type == "ident" and nxt and nxt.type == "op" and nxt.value == "<-" then
-          local name = self:next().value
-          self:expect("op", "<-")
-          local source = self:parse_expr()
-          quals[#quals + 1] = { kind = "generator", name = name, value_name = nil, source = source }
-          has_gen = true
-        elseif cur.type == "ident" and nxt and nxt.type == "punct" and nxt.value == ","
-            and t3 and t3.type == "ident" and t4 and t4.type == "op" and t4.value == "<-" then
-          local name = self:next().value
-          self:expect("punct", ",")
-          local value_name = self:expect("ident").value
-          self:expect("op", "<-")
-          local source = self:parse_expr()
-          quals[#quals + 1] = { kind = "generator", name = name, value_name = value_name, source = source }
-          has_gen = true
-        else
-          local cond = self:parse_expr()
-          quals[#quals + 1] = { kind = "guard", cond = cond }
-        end
-      until not self:accept_comma()
-      if not has_gen then self:fail("comprehension needs at least one generator (name <- source)") end
+      local quals = self:parse_qualifiers()
       self:expect("punct", "]")
       return { kind = "comprehension", yield = first, quals = quals, line = t.line, col = t.col }
     end
@@ -187,17 +195,30 @@ function Parser:parse_primary()
   end
   if self:at("punct", "{") then
     self:next()
-    local fields = {}
-    if not self:at("punct", "}") then
+    if self:at("punct", "}") then
+      self:next()
+      return { kind = "table", fields = {}, line = t.line, col = t.col }
+    end
+    -- record literal: `ident = …`; anything else is a dict comprehension
+    if self:at("ident") and self:peek2() and self:peek2().type == "op" and self:peek2().value == "=" then
+      local fields = {}
       repeat
         local key = self:expect("ident")
         self:expect("op", "=")
         local value = self:parse_expr()
         fields[#fields + 1] = { key = key.value, value = value }
       until not self:accept_comma()
+      self:expect("punct", "}")
+      return { kind = "table", fields = fields, line = t.line, col = t.col }
     end
+    -- dict comprehension: `key => value | quals`
+    local key = self:parse_expr()
+    self:expect("op", "=>")
+    local value = self:parse_expr()
+    self:expect("punct", "|")
+    local quals = self:parse_qualifiers()
     self:expect("punct", "}")
-    return { kind = "table", fields = fields, line = t.line, col = t.col }
+    return { kind = "dict_comprehension", key = key, value = value, quals = quals, line = t.line, col = t.col }
   end
   self:fail("unexpected token '" .. tostring(t.value) .. "'")
 end
