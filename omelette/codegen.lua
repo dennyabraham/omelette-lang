@@ -57,11 +57,9 @@ local function gen_pipe(node, ctx)
   return expr(rhs, ctx) .. "(" .. expr(node.lhs, ctx) .. ")"
 end
 
--- a comprehension compiles to a self-contained IIFE so it is valid in any
--- expression position. Generators become `for _, name in ipairs(src) do`,
--- guards become `if cond then`, opened in qualifier order; the innermost body
--- appends the yield expression to a fresh accumulator table.
-local function gen_comprehension(node, ctx)
+-- shared comprehension IIFE: opens the qualifier loops/guards in order, calls
+-- `inner(acc)` for the innermost body line, then closes and returns the accumulator.
+local function gen_comp_iife(node, ctx, inner)
   ctx.acc = (ctx.acc or 0) + 1
   local acc = "__acc" .. ctx.acc
   local lines = { "(function()", "  local " .. acc .. " = {}" }
@@ -80,7 +78,7 @@ local function gen_comprehension(node, ctx)
     end
     pad = pad .. "  "
   end
-  lines[#lines + 1] = pad .. acc .. "[#" .. acc .. " + 1] = " .. expr(node.yield, ctx)
+  lines[#lines + 1] = pad .. inner(acc)
   for _ = 1, #node.quals do
     pad = pad:sub(1, #pad - 2)
     lines[#lines + 1] = pad .. "end"
@@ -88,6 +86,18 @@ local function gen_comprehension(node, ctx)
   lines[#lines + 1] = "  return " .. acc
   lines[#lines + 1] = "end)()"
   return table.concat(lines, "\n")
+end
+
+local function gen_comprehension(node, ctx)
+  return gen_comp_iife(node, ctx, function(acc)
+    return acc .. "[#" .. acc .. " + 1] = " .. expr(node.yield, ctx)
+  end)
+end
+
+local function gen_dict_comprehension(node, ctx)
+  return gen_comp_iife(node, ctx, function(acc)
+    return acc .. "[" .. expr(node.key, ctx) .. "] = " .. expr(node.value, ctx)
+  end)
 end
 
 -- a range literal [a to b] compiles to a self-contained IIFE building {a..b}
@@ -140,6 +150,7 @@ expr = function(node, ctx)
     return "function(" .. table.concat(node.params, ", ") .. ")\n" .. gen_fn_body(node.body, ctx, "  ") .. "\nend"
   end
   if k == "comprehension" then return gen_comprehension(node, ctx) end
+  if k == "dict_comprehension" then return gen_dict_comprehension(node, ctx) end
   if k == "range" then return gen_range(node, ctx) end
   if k == "index" then
     local obj_kind = node.obj.kind
