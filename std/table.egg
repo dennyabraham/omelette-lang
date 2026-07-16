@@ -5,3 +5,7 @@ pub let values d = [ v | k, v <- d ]
 pub let get d k = d[k]
 pub let has d k = d[k] ~= nil
 pub let size d = #keys(d)
+let pick a b k = if has(b, k) then b[k] else a[k]
+let cc a b i = if i <= #a then a[i] else b[i - #a]
+let allkeys a b = [ cc(a, b, i) | i <- [1 to (#a + #b)] ]
+pub let merge a b = { k => pick(a, b, k) | k <- allkeys(keys(a), keys(b)) }
