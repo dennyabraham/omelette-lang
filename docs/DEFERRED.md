@@ -4,13 +4,13 @@ A consolidated, durable record of things intentionally **not** built yet, with t
 rationale and where the decision was made. Individual specs' Non-Goals sections remain
 the authoritative detail; this file is the index so nothing gets lost between cycles.
 
-_Last updated: 2026-07-13 (after CI/release + top-level mutual recursion)._
+_Last updated: 2026-07-16 (after dict comprehensions + merge; stdlib complete)._
 
 ## Language features
 
-- **Map-producing dict comprehensions** (`{ k => v | … }`) — and therefore the stdlib's
-  **`merge`**. Building a *new* dict with dynamic keys has no path today.
-  _Source: range-dict-comprehensions spec (Non-Goals)._
+- **~~Map-producing dict comprehensions~~** (`{ k => v | … }`) — ✅ **DONE** (2026-07-16):
+  build a dict with dynamic keys; new `=>` token, shared qualifier machinery, IIFE codegen.
+  Unblocked **`std.table.merge`** (also done).
 - **Descending ranges / custom step** — `[5 to 1]` is *empty*, not descending; no
   `[a, b .. c]` step form. _Source: range-dict-comprehensions spec._
 - **`if` / `match` as sub-expressions** — they only work in binding/return/branch position;
@@ -63,7 +63,7 @@ _Last updated: 2026-07-13 (after CI/release + top-level mutual recursion)._
 - **`searcher.install()` idempotency** — re-registers the loader and accumulates roots on each
   call. _Source: v1 review._
 
-## Standard library (in progress)
+## Standard library
 
-- **`merge`** is deferred within the stdlib until map-producing dict comprehensions exist
-  (see Language features, above). `get`/`has` work today via `xs[i]`.
+- ✅ **Complete.** `std.list` / `std.string` / `std.table` (incl. **`merge`**, added 2026-07-16
+  via dict comprehensions). Nothing outstanding.

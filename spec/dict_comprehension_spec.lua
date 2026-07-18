@@ -46,4 +46,10 @@ h.describe("dict comprehensions", function()
     h.eq(mod.big, { b = 2, c = 3 })
     h.eq(mod.squares, { 1, 4, 9 })
   end)
+  h.it("behavioral: nests a list comprehension inside a dict comprehension (distinct __acc gensyms)", function()
+    -- inner list-comp uses __acc2 while the outer dict-comp uses __acc1; must not collide
+    local mod = assert(compiler.eval(
+      "pub let g = { k => [ x * 2 | x <- v ] | k, v <- { a = [1, 2], b = [3] } }"))
+    h.eq(mod.g, { a = { 2, 4 }, b = { 6 } })
+  end)
 end)
