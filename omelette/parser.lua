@@ -239,20 +239,67 @@ function Parser:parse_statement()
   return self:parse_expr()
 end
 
+-- parse a type expression (only in annotation position): a type name
+-- (number/string/boolean/any/… as idents, or the nil keyword), or a function
+-- type `(T1, T2) -> R`.
+function Parser:parse_type()
+  if self:at("punct", "(") then
+    self:next()
+    local params = {}
+    if not self:at("punct", ")") then
+      repeat params[#params + 1] = self:parse_type() until not self:accept_comma()
+    end
+    self:expect("punct", ")")
+    self:expect("op", "->")
+    local ret = self:parse_type()
+    return { kind = "fun_type", params = params, ret = ret }
+  end
+  if self:at("keyword", "nil") then
+    self:next()
+    return { kind = "type_name", name = "nil" }
+  end
+  local id = self:expect("ident")
+  return { kind = "type_name", name = id.value }
+end
+
 function Parser:parse_let()
   local is_pub = false
   local startt = self:peek()
   if self:at("keyword", "pub") then is_pub = true; self:next() end
   self:expect("keyword", "let")
   local name = self:expect("ident").value
-  local params = nil
-  while self:at("ident") do
+  -- params: bare `ident` (untyped -> false) or parenthesized `(ident: type)`
+  local params, param_types = nil, nil
+  local has_typed_param = false
+  while self:at("ident") or self:at("punct", "(") do
     params = params or {}
-    params[#params + 1] = self:next().value
+    param_types = param_types or {}
+    if self:at("punct", "(") then
+      self:next()
+      local pname = self:expect("ident").value
+      self:expect("op", ":")
+      local ptype = self:parse_type()
+      self:expect("punct", ")")
+      params[#params + 1] = pname
+      param_types[#params] = ptype
+      has_typed_param = true
+    else
+      params[#params + 1] = self:next().value
+      param_types[#params] = false
+    end
+  end
+  if not has_typed_param then param_types = nil end
+  -- return type (functions) or value-binding type
+  local ret_type, value_type = nil, nil
+  if self:at("op", ":") then
+    self:next()
+    local t = self:parse_type()
+    if params then ret_type = t else value_type = t end
   end
   self:expect("op", "=")
   local value = self:parse_block_or_expr()
-  return { kind = "let", name = name, params = params, value = value,
+  return { kind = "let", name = name, params = params, param_types = param_types,
+           ret_type = ret_type, value_type = value_type, value = value,
            is_pub = is_pub, line = startt.line, col = startt.col }
 end
 
