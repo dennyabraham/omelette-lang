@@ -2,9 +2,21 @@ local parser = require("omelette.parser")
 local codegen = require("omelette.codegen")
 local M = {}
 
-function M.compile(source)
+function M.check(source)
   local program, perr = parser.parse(source)
   if not program then return nil, perr end
+  local typecheck = require("omelette.typecheck")
+  return typecheck.check(program), nil
+end
+
+function M.compile(source, opts)
+  local program, perr = parser.parse(source)
+  if not program then return nil, perr end
+  if opts and opts.check then
+    local typecheck = require("omelette.typecheck")
+    local diags = typecheck.check(program)
+    if #diags > 0 then return nil, diags[1] end
+  end
   local resolver = require("omelette.resolver")
   program = resolver.resolve(program)
   local ok, lua = pcall(codegen.program, program)
