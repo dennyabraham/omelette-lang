@@ -4,7 +4,7 @@ local lexer = require("omelette.lexer")
 local parser = require("omelette.parser")
 local M = {}
 
-local USAGE = "usage: omelette <build|run|repl> [file.egg] [--out path] [--ast] [--tokens]\n"
+local USAGE = "usage: omelette <build|run|check|repl> [file.egg] [--out path] [--ast] [--tokens] [--no-check]\n"
 
 local function read_file(path)
   local fh = io.open(path, "r")
@@ -42,7 +42,7 @@ local function cmd_build(argv)
     io.write("program with " .. #prog.stmts .. " statements\n")
     return 0
   end
-  local lua, err = compiler.compile(src)
+  local lua, err = compiler.compile(src, { check = not has_flag(argv, "--no-check") })
   if not lua then io.write(errors.render(err) .. "\n"); return 1 end
   local out = flag_value(argv, "--out")
   if out then
@@ -62,15 +62,32 @@ local function cmd_run(argv)
     io.write(errors.render(errors.new("cannot read file '" .. tostring(file) .. "'", 1, 1)) .. "\n")
     return 1
   end
-  local _, err = compiler.eval(src, file)
+  local lua, cerr = compiler.compile(src, { check = not has_flag(argv, "--no-check") })
+  if not lua then io.write(errors.render(cerr) .. "\n"); return 1 end
+  local _, err = compiler.eval(src, file)   -- eval re-compiles without check; fine (already validated)
   if err then io.write(errors.render(err) .. "\n"); return 1 end
   return 0
+end
+
+local function cmd_check(argv)
+  local file = argv[2]
+  local src = file and read_file(file)
+  if not src then
+    io.write(errors.render(errors.new("cannot read file '" .. tostring(file) .. "'", 1, 1)) .. "\n")
+    return 1
+  end
+  local diags, err = compiler.check(src)
+  if err then io.write(errors.render(err) .. "\n"); return 1 end
+  if #diags == 0 then io.write("no type errors\n"); return 0 end
+  for _, d in ipairs(diags) do io.write(errors.render(d) .. "\n") end
+  return 1
 end
 
 function M.main(argv)
   local cmd = argv[1]
   if cmd == "build" then return cmd_build(argv) end
   if cmd == "run" then return cmd_run(argv) end
+  if cmd == "check" then return cmd_check(argv) end
   if cmd == "repl" then return require("omelette.repl").start() end
   io.write(USAGE)
   return 2
