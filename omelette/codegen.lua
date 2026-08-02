@@ -115,6 +115,58 @@ local function gen_range(node, ctx)
   }, "\n")
 end
 
+-- walk a pattern against an access expression, appending Lua boolean test strings
+-- to `tests` and `"local <name> = <access>"` binding strings to `binds`.
+local function compile_pattern(pat, access, ctx, tests, binds)
+  local k = pat.kind
+  if k == "wildcard" then
+    -- always matches, binds nothing
+  elseif k == "var" then
+    binds[#binds + 1] = "local " .. pat.name .. " = " .. access
+  elseif k == "lit" then
+    tests[#tests + 1] = access .. " == " .. expr({ kind = pat.lit_kind, value = pat.value }, ctx)
+  elseif k == "array_pat" then
+    tests[#tests + 1] = "type(" .. access .. ') == "table"'
+    tests[#tests + 1] = "#" .. access .. " == " .. #pat.elems
+    for i, sub in ipairs(pat.elems) do
+      compile_pattern(sub, access .. "[" .. i .. "]", ctx, tests, binds)
+    end
+  elseif k == "record_pat" then
+    tests[#tests + 1] = "type(" .. access .. ') == "table"'
+    for _, f in ipairs(pat.fields) do
+      compile_pattern(f.pat, access .. "." .. f.key, ctx, tests, binds)
+    end
+  end
+end
+
+-- a match compiles to a self-contained IIFE: the subject is bound once; each case
+-- opens `if <tests> then <binds> [if <guard> then] return <body> end`; on no match,
+-- errors. Tests are `and`-joined and short-circuit, so structural tests (type/#)
+-- always precede the deeper accesses they guard.
+local function gen_match(node, ctx)
+  ctx.acc = (ctx.acc or 0) + 1
+  local subj = "__m" .. ctx.acc
+  local lines = { "(function()", "  local " .. subj .. " = " .. expr(node.subject, ctx) }
+  for _, c in ipairs(node.cases) do
+    local tests, binds = {}, {}
+    compile_pattern(c.pattern, subj, ctx, tests, binds)
+    local cond = #tests > 0 and table.concat(tests, " and ") or "true"
+    lines[#lines + 1] = "  if " .. cond .. " then"
+    for _, b in ipairs(binds) do lines[#lines + 1] = "    " .. b end
+    if c.guard then
+      lines[#lines + 1] = "    if " .. expr(c.guard, ctx) .. " then"
+      lines[#lines + 1] = gen_fn_body(c.body, ctx, "      ")
+      lines[#lines + 1] = "    end"
+    else
+      lines[#lines + 1] = gen_fn_body(c.body, ctx, "    ")
+    end
+    lines[#lines + 1] = "  end"
+  end
+  lines[#lines + 1] = '  error("match: no matching case")'
+  lines[#lines + 1] = "end)()"
+  return table.concat(lines, "\n")
+end
+
 expr = function(node, ctx)
   local k = node.kind
   if k == "number" then return tostring(node.value) end
@@ -166,6 +218,7 @@ expr = function(node, ctx)
     end
     return obj_code .. "[" .. expr(node.key, ctx) .. "]"
   end
+  if k == "match" then return gen_match(node, ctx) end
   error("codegen: cannot emit expression of kind '" .. tostring(k) .. "'")
 end
 
@@ -182,32 +235,6 @@ gen_value = function(target, node, ctx, pad)
     lines[#lines + 1] = gen_value(target, node.then_branch, ctx, pad .. "  ")
     lines[#lines + 1] = pad .. "else"
     lines[#lines + 1] = gen_value(target, node.else_branch, ctx, pad .. "  ")
-    lines[#lines + 1] = pad .. "end"
-    return table.concat(lines, "\n")
-  end
-  if k == "match" then
-    local subj = M.expr(node.subject, ctx)
-    -- collect literal cases in order; find the wildcard case (if any)
-    local lit_cases, wildcard_case = {}, nil
-    for _, c in ipairs(node.cases) do
-      if c.pattern.kind == "wildcard" then
-        wildcard_case = c
-      else
-        lit_cases[#lit_cases + 1] = c
-      end
-    end
-    local lines = {}
-    for i, c in ipairs(lit_cases) do
-      local lit = M.expr({ kind = c.pattern.lit_kind, value = c.pattern.value,
-        name = c.pattern.value }, ctx)
-      local kw = i == 1 and "if " or "elseif "
-      lines[#lines + 1] = pad .. kw .. subj .. " == " .. lit .. " then"
-      lines[#lines + 1] = gen_value(target, c.body, ctx, pad .. "  ")
-    end
-    if wildcard_case then
-      lines[#lines + 1] = pad .. "else"
-      lines[#lines + 1] = gen_value(target, wildcard_case.body, ctx, pad .. "  ")
-    end
     lines[#lines + 1] = pad .. "end"
     return table.concat(lines, "\n")
   end
@@ -251,7 +278,7 @@ gen_fn_body = function(node, ctx, pad)
     lines[#lines + 1] = gen_fn_body(node.result, ctx, pad)
     return table.concat(lines, "\n")
   end
-  if k == "if" or k == "match" then
+  if k == "if" then
     -- use a temporary return variable for clarity and falsy-safety
     return pad .. "local __ret\n" .. gen_value("__ret", node, ctx, pad) .. "\n" .. pad .. "return __ret"
   end
