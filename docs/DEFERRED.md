@@ -36,9 +36,24 @@ _Last updated: 2026-07-16 (after dict comprehensions + merge; stdlib complete)._
 
 ## Type system
 
-- **Gradual / optional type checking** — annotation *parsing* (`let f (x: number) … `) plus
-  a checker, landing in the reserved `resolver` seam. This is the big future feature.
-  _Source: v1 spec (Future Scope)._
+- **~~Optional typing (cycle 1)~~** — ✅ **DONE** (2026-07-21): erased, compile-time-only optional
+  types — `:` annotations, `omelette/typecheck.lua` (primitives + function types + `any`), opt-in
+  `omelette check` + `build`/`run --no-check`. Runtime paths (searcher/embed/REPL) never check;
+  generated Lua byte-identical. _Source: 2026-07-20 optional-typing spec._
+- **Optional typing — cycle 2 & refinements:**
+  - **Collection types** `[T]` / `{ x: T }` and typing the stdlib; **richer inference**
+    (unification / HM). _Deferred from cycle 1._
+  - **Bidirectional branch checking** — `if`/`match` with divergent branches currently join to
+    `any`, so a knowable mismatch against a declared return type (`let f (b: boolean): number =
+    if b then 1 else "x"`) is under-reported. Check branches against the expected type instead of
+    only synthesizing. _Source: cycle-1 reviews._
+  - **Walk comprehension/range/dict-comp bodies** — currently synthesize to `any` without
+    recursing, so operator mismatches inside a yield are missed (never a false positive).
+  - **Better function-type diagnostics** — `tyname` collapses all `fun` types to `"function"`;
+    render the signature. _Source: cycle-1 reviews._
+- **`--runtime-checks`** — opt-in codegen mode emitting boundary guards (`assert(type(x)==…)`)
+  from annotations (the "true gradual" soundness down-payment; default output stays erased). _Backlogged from the typing-model decision._
+- **Lambda parameter annotations** — lambdas are untyped (`any` params) in cycle 1. _Deferred._
 
 ## Tooling & infrastructure
 
