@@ -43,7 +43,7 @@ production load-time crash.
 | First cut | **Thin vertical slice**: annotation parsing + minimal checker (primitives + functions + `any`) |
 | Annotation token | **`:`** (kept free; add to lexer) |
 | Function type | **`(T1, T2) -> R`** (parenthesized param list; matches multi-arg, non-curried calls) |
-| Dynamic type | **`any`** (keyword) |
+| Dynamic type | **`any`** (an ordinary ident in annotation position, not a reserved keyword) |
 | Where checking runs | **opt-in, dev/build-time only**; runtime `compile()`/searcher/embed/REPL never check |
 | CLI behavior | **`omelette check <file>`** reports all; **`build`/`run`** check-and-block, `--no-check` to skip |
 | Checker home | new **`omelette/typecheck.lua`**; the `resolver` seam stays a light identity pass on the hot path |
@@ -135,7 +135,7 @@ fully-annotated program is byte-identical to its unannotated twin.
 
 Run under `luajit` (`luajit spec/run.lua`), existing harness.
 
-- **Lexer:** `:` tokenizes; `any` is a keyword.
+- **Lexer:** `:` tokenizes; type names (`number`/`string`/`boolean`/`any`) are ordinary idents, not keywords.
 - **Parser:** typed params `(x: number)`, return `: R`, value `let x: T`; `parse_type` for each
   primitive, `any`, and function types `(number, string) -> number`; untyped params still parse.
   **Erasure:** `codegen.program` output for an annotated program equals the unannotated version.
@@ -151,7 +151,7 @@ Run under `luajit` (`luajit spec/run.lua`), existing harness.
 
 ## File Touchpoints
 
-- `omelette/lexer.lua` — add `:` op and `any` keyword.
+- `omelette/lexer.lua` — add `:` op (type names are plain idents; no new keyword).
 - `omelette/parser.lua` — `parse_type()`; typed params / return / value-binding annotations;
   new `let` AST fields (`param_types`, `ret_type`, `value_type`).
 - `omelette/typecheck.lua` — **new** module: type rep, `consistent`, `synth`, `check`.

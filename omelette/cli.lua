@@ -23,8 +23,25 @@ local function flag_value(argv, name)
   return nil
 end
 
+-- the positional file argument: the first non-flag arg after the command (argv[1]),
+-- skipping any "--flag" and the value that follows "--out". This makes flag order
+-- irrelevant (e.g. `build --no-check foo.egg` and `build foo.egg --no-check` both work).
+local function positional_file(argv)
+  local i = 2
+  while argv[i] do
+    if argv[i] == "--out" then
+      i = i + 2            -- skip the flag and its value
+    elseif argv[i]:sub(1, 2) == "--" then
+      i = i + 1            -- skip a valueless flag
+    else
+      return argv[i]
+    end
+  end
+  return nil
+end
+
 local function cmd_build(argv)
-  local file = argv[2]
+  local file = positional_file(argv)
   local src = file and read_file(file)
   if not src then
     io.write(errors.render(errors.new("cannot read file '" .. tostring(file) .. "'", 1, 1)) .. "\n")
@@ -56,7 +73,7 @@ local function cmd_build(argv)
 end
 
 local function cmd_run(argv)
-  local file = argv[2]
+  local file = positional_file(argv)
   local src = file and read_file(file)
   if not src then
     io.write(errors.render(errors.new("cannot read file '" .. tostring(file) .. "'", 1, 1)) .. "\n")
@@ -70,7 +87,7 @@ local function cmd_run(argv)
 end
 
 local function cmd_check(argv)
-  local file = argv[2]
+  local file = positional_file(argv)
   local src = file and read_file(file)
   if not src then
     io.write(errors.render(errors.new("cannot read file '" .. tostring(file) .. "'", 1, 1)) .. "\n")
