@@ -345,6 +345,41 @@ function Parser:parse_if()
            else_branch = else_branch, line = t.line, col = t.col }
 end
 
+function Parser:parse_pattern()
+  if self:at("punct", "_") then self:next(); return { kind = "wildcard" } end
+  if self:at("punct", "[") then
+    self:next()
+    local elems = {}
+    if not self:at("punct", "]") then
+      repeat elems[#elems + 1] = self:parse_pattern() until not self:accept_comma()
+    end
+    self:expect("punct", "]")
+    return { kind = "array_pat", elems = elems }
+  end
+  if self:at("punct", "{") then
+    self:next()
+    local fields = {}
+    if not self:at("punct", "}") then
+      repeat
+        local key = self:expect("ident").value
+        local pat
+        if self:at("op", ":") then self:next(); pat = self:parse_pattern()
+        else pat = { kind = "var", name = key } end
+        fields[#fields + 1] = { key = key, pat = pat }
+      until not self:accept_comma()
+    end
+    self:expect("punct", "}")
+    return { kind = "record_pat", fields = fields }
+  end
+  if self:at("number") or self:at("string") or self:at("keyword", "true")
+      or self:at("keyword", "false") or self:at("keyword", "nil") then
+    local lit = self:parse_primary()
+    return { kind = "lit", value = lit.value, lit_kind = lit.kind }
+  end
+  local id = self:expect("ident")
+  return { kind = "var", name = id.value }
+end
+
 function Parser:parse_match()
   local t = self:expect("keyword", "match")
   local subject = self:parse_expr()
@@ -352,16 +387,12 @@ function Parser:parse_match()
   local cases = {}
   while self:at("punct", "|") do
     self:next()
-    local pattern
-    if self:at("punct", "_") then
-      self:next(); pattern = { kind = "wildcard" }
-    else
-      local lit = self:parse_primary()
-      pattern = { kind = "lit", value = lit.value, lit_kind = lit.kind }
-    end
+    local pattern = self:parse_pattern()
+    local guard = nil
+    if self:at("keyword", "when") then self:next(); guard = self:parse_expr() end
     self:expect("op", "->")
     local body = self:parse_expr_or_form()
-    cases[#cases + 1] = { pattern = pattern, body = body }
+    cases[#cases + 1] = { pattern = pattern, guard = guard, body = body }
   end
   if #cases == 0 then self:fail("match needs at least one | case") end
   return { kind = "match", subject = subject, cases = cases, line = t.line, col = t.col }
