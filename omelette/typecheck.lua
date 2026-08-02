@@ -53,6 +53,14 @@ local function lookup(env, name)
   return nil
 end
 
+local function collect_pattern_vars(pat, out)
+  local k = pat.kind
+  if k == "var" then out[#out + 1] = pat.name
+  elseif k == "array_pat" then for _, p in ipairs(pat.elems) do collect_pattern_vars(p, out) end
+  elseif k == "record_pat" then for _, f in ipairs(pat.fields) do collect_pattern_vars(f.pat, out) end
+  end
+end
+
 local Checker = {}
 Checker.__index = Checker
 local function new_checker() return setmetatable({ diags = {} }, Checker) end
@@ -135,7 +143,12 @@ function Checker:synth(node, env)
     self:synth(node.subject, env)
     local ty
     for _, c in ipairs(node.cases) do
-      local bt = self:synth(c.body, env)
+      local s = scope(env)
+      local names = {}
+      collect_pattern_vars(c.pattern, names)
+      for _, n in ipairs(names) do s.vars[n] = ANY end
+      if c.guard then self:synth(c.guard, s) end
+      local bt = self:synth(c.body, s)
       if ty == nil then ty = bt elseif ty.kind ~= bt.kind then ty = ANY end
     end
     return ty or ANY
