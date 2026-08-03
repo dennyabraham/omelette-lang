@@ -9,9 +9,10 @@
 Extend `match` from literal/wildcard-only to real pattern matching: **variable-binding
 patterns, array & record destructuring (with rename and nesting), and guards**. A whole
 `match` now compiles to a **self-contained IIFE**, which cleanly supports bindings + guards
-+ fall-through and — as a bonus — makes `match` a **first-class expression** usable in any
-position (closing a deferred item). A non-exhaustive match with no matching value raises a
-runtime error.
++ fall-through and — as a bonus — makes `match` a **first-class expression**: a parenthesized
+`(match …)` is usable in any expression position (ML-style; via the `(` primary routing
+through `parse_expr_or_form`). A non-exhaustive match with no matching value raises a runtime
+error.
 
 ADT/constructor patterns and compile-time exhaustiveness are **out of scope** (they need
 sum types — a separate future cycle).
@@ -20,7 +21,7 @@ sum types — a separate future cycle).
 
 - `| n ->` binds `n`; `| [a, b] ->` and `| { x, y } ->` destructure; `| p when c ->` guards.
 - Fixes the current rough edge where a non-`_` identifier in pattern position errored.
-- `match` works in any expression position (IIFE lowering).
+- `match` works in any expression position (IIFE lowering; parenthesized where the grammar needs it, ML-style).
 - No-match fails loud (`error("match: no matching case")`) rather than silently yielding nil.
 
 ## Non-Goals (deferred)

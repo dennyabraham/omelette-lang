@@ -65,4 +65,20 @@ h.describe("pattern codegen", function()
     }, "\n")))
     h.eq(mod.label(0), "0"); h.eq(mod.label(5), "1")
   end)
+  h.it("behavioral: a parenthesized match works in any expression position", function()
+    -- pipe LHS
+    local a = assert(compiler.eval("pub let f n = (match n with | 0 -> 10 | _ -> 20) |> tostring"))
+    h.eq(a.f(0), "10"); h.eq(a.f(9), "20")
+    -- nested match as the subject of another match
+    local b = assert(compiler.eval(
+      'pub let g v = match (match v with | 0 -> "a" | _ -> "b") with | "a" -> 1 | _ -> 2'))
+    h.eq(b.g(0), 1); h.eq(b.g(9), 2)
+    -- binop operand
+    local c = assert(compiler.eval("pub let h n = 1 + (match n with | 0 -> 100 | _ -> 200)"))
+    h.eq(c.h(5), 201)
+    -- comprehension yield
+    local d = assert(compiler.eval(
+      'pub let k xs = [ (match x with | 0 -> "z" | _ -> "n") | x <- xs ]'))
+    h.eq(d.k({ 0, 1 }), { "z", "n" })
+  end)
 end)

@@ -163,7 +163,10 @@ function Parser:parse_primary()
   if t.type == "ident" then self:next(); return { kind = "ident", name = t.value, line = t.line, col = t.col } end
   if self:at("punct", "(") then
     self:next()
-    local e = self:parse_expr()
+    -- parse_expr_or_form so a parenthesized form (match/if/fn) is usable as a
+    -- primary, hence in ANY expression position: (match … ) |> f, [ (match …) | … ],
+    -- match (match …) with …, 1 + (if c then a else b), etc.
+    local e = self:parse_expr_or_form()
     self:expect("punct", ")")
     return e
   end
