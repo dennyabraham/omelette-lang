@@ -13,19 +13,28 @@ _Last updated: 2026-07-16 (after dict comprehensions + merge; stdlib complete)._
   Unblocked **`std.table.merge`** (also done).
 - **Descending ranges / custom step** — `[5 to 1]` is *empty*, not descending; no
   `[a, b .. c]` step form. _Source: range-dict-comprehensions spec._
-- **`if` / `match` as sub-expressions** — they only work in binding/return/branch position;
-  a bare `if`/`match` can't be a value sub-expression. Since the stdlib cycle made call
-  arguments parse via `parse_expr_or_form`, `f(if c then a else b)` now *parses* but fails
-  at codegen (`cannot emit expression of kind 'if'`) — a parse→codegen failure-quality
-  regression. Fix by applying the comprehension/range IIFE lowering to `if`/`match` (so they
-  work everywhere), or reject them at parse time in arg position. _Source: comprehensions +
-  stdlib whole-branch reviews._
+- **`if` as a sub-expression** — `match` is now a full first-class expression (IIFE codegen,
+  2026-08-02), and a parenthesized `(match …)`/`(fn …)` works in any position. But `if` is
+  still only statement-lowered: `(if c then a else b)` *parses* (the `(` primary routes through
+  `parse_expr_or_form`) but fails at codegen (`cannot emit expression of kind 'if'`). Easy fix
+  now: give `if` an IIFE in `codegen.expr` mirroring `gen_match`. _Source: comprehensions +
+  stdlib + pattern-matching whole-branch reviews._
 - **~~Top-level forward references / mutual recursion~~** — ✅ **DONE** (2026-07-13):
   `M.program` now forward-declares all top-level locals (`local a, b, …`) then assigns, so
   top-level functions reference each other in any order (mutual recursion / forward refs).
   (Value bindings that eagerly read a not-yet-computed sibling remain a runtime error —
   inherent.)
-- **Sum / variant types, exhaustiveness checking, type aliases.** _Source: v1 spec._
+- **~~Richer pattern matching~~** — ✅ **DONE** (2026-08-02): variable-binding, array/record
+  destructuring (pun + rename, nested), and guards (`when`); `match` compiles to an IIFE (now a
+  first-class expression); no-match raises a runtime error. Remaining pattern work (deferred):
+  **or-patterns** (`| 0 | 1 ->`), **as-patterns** (`x as [a,b]`), **negative-number literal
+  patterns** (`| -1 ->` doesn't parse), **record key-presence testing** (fields bind nil if
+  absent, by design), **non-linear/hygiene** (`[a, a]` last-wins), and the **greedy nested-form
+  arm** (parenthesize an inner `match`/`if` in an arm body to delimit it). ADT/constructor
+  patterns + compile-time exhaustiveness need sum types (below). _Source: 2026-08-02 spec + reviews._
+- **Sum / variant types, exhaustiveness checking, type aliases** — also unlocks ADT/constructor
+  patterns and compile-time match exhaustiveness (the runtime no-match error becomes the fallback
+  the checker still permits). _Source: v1 spec._
 - **Custom operators, macros.** _Source: v1 spec._
 - **~~`pub let` recursion-by-name~~** — ✅ **DONE** (stdlib cycle): top-level bindings now emit
   as `local` + `M.name = name`, so `pub` functions recurse and cross-reference by name.
