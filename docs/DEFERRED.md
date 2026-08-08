@@ -13,12 +13,11 @@ _Last updated: 2026-07-16 (after dict comprehensions + merge; stdlib complete)._
   Unblocked **`std.table.merge`** (also done).
 - **Descending ranges / custom step** — `[5 to 1]` is *empty*, not descending; no
   `[a, b .. c]` step form. _Source: range-dict-comprehensions spec._
-- **`if` as a sub-expression** — `match` is now a full first-class expression (IIFE codegen,
-  2026-08-02), and a parenthesized `(match …)`/`(fn …)` works in any position. But `if` is
-  still only statement-lowered: `(if c then a else b)` *parses* (the `(` primary routes through
-  `parse_expr_or_form`) but fails at codegen (`cannot emit expression of kind 'if'`). Easy fix
-  now: give `if` an IIFE in `codegen.expr` mirroring `gen_match`. _Source: comprehensions +
-  stdlib + pattern-matching whole-branch reviews._
+- **~~`if` / `match` as sub-expressions~~** — ✅ **DONE**: `match` (2026-08-02) and `if`
+  (2026-08-07) are both first-class expressions now (IIFE codegen in `codegen.expr`). A
+  parenthesized `(if …)`/`(match …)`/`(fn …)` works in any expression position (ML-style). `if`
+  keeps its non-closure statement-lowering in the common binding/branch/return positions
+  (`gen_if` only fires for a genuine sub-expression). _Source: pattern-matching + if-expression cycles._
 - **~~Top-level forward references / mutual recursion~~** — ✅ **DONE** (2026-07-13):
   `M.program` now forward-declares all top-level locals (`local a, b, …`) then assigns, so
   top-level functions reference each other in any order (mutual recursion / forward refs).
