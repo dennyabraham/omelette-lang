@@ -139,6 +139,22 @@ local function compile_pattern(pat, access, ctx, tests, binds)
   end
 end
 
+-- an if used as a value sub-expression compiles to a self-contained IIFE that
+-- returns from each branch (falsy-safe). if in binding/branch/return position keeps
+-- its non-closure lowering in gen_value/gen_fn_body — this path is only reached when
+-- an if appears in a genuine expression position (via M.expr).
+local function gen_if(node, ctx)
+  return table.concat({
+    "(function()",
+    "  if " .. expr(node.cond, ctx) .. " then",
+    gen_fn_body(node.then_branch, ctx, "    "),
+    "  else",
+    gen_fn_body(node.else_branch, ctx, "    "),
+    "  end",
+    "end)()",
+  }, "\n")
+end
+
 -- a match compiles to a self-contained IIFE: the subject is bound once; each case
 -- opens `if <tests> then <binds> [if <guard> then] return <body> end`; on no match,
 -- errors. Tests are `and`-joined and short-circuit, so structural tests (type/#)
@@ -218,6 +234,7 @@ expr = function(node, ctx)
     end
     return obj_code .. "[" .. expr(node.key, ctx) .. "]"
   end
+  if k == "if" then return gen_if(node, ctx) end
   if k == "match" then return gen_match(node, ctx) end
   error("codegen: cannot emit expression of kind '" .. tostring(k) .. "'")
 end
