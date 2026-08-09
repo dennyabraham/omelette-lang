@@ -58,6 +58,7 @@ local function collect_pattern_vars(pat, out)
   if k == "var" then out[#out + 1] = pat.name
   elseif k == "array_pat" then for _, p in ipairs(pat.elems) do collect_pattern_vars(p, out) end
   elseif k == "record_pat" then for _, f in ipairs(pat.fields) do collect_pattern_vars(f.pat, out) end
+  elseif k == "ctor_pat" then for _, f in ipairs(pat.fields) do collect_pattern_vars(f.pat, out) end
   end
 end
 
@@ -160,6 +161,10 @@ function Checker:synth(node, env)
   end
   if k == "array" then for _, it in ipairs(node.items) do self:synth(it, env) end; return ANY end
   if k == "table" then for _, f in ipairs(node.fields) do self:synth(f.value, env) end; return ANY end
+  if k == "construct" then
+    for _, f in ipairs(node.fields) do self:synth(f.value, env) end
+    return ANY
+  end
   -- comprehension / range / dict_comprehension: collection typing is cycle 2 -> any (not walked)
   return ANY
 end
@@ -229,7 +234,7 @@ function M.check(program)
   -- pass 2: check bodies (check_binding re-declares, which is fine/idempotent)
   for _, node in ipairs(program.stmts) do
     if node.kind == "let" then c:check_binding(node, genv)
-    else c:synth(node, genv) end
+    elseif node.kind ~= "type_decl" then c:synth(node, genv) end
   end
   return c.diags
 end
