@@ -160,7 +160,27 @@ function Parser:parse_primary()
     local s = self:expect("string")
     return { kind = "lua_raw", code = s.value, line = t.line, col = t.col }
   end
-  if t.type == "ident" then self:next(); return { kind = "ident", name = t.value, line = t.line, col = t.col } end
+  if t.type == "ident" then
+    self:next()
+    if t.value:sub(1, 1):match("%u") then
+      -- uppercase ident = constructor: `Ctor { field = v }` or bare nullary `Ctor`
+      local fields = {}
+      if self:at("punct", "{") then
+        self:next()
+        if not self:at("punct", "}") then
+          repeat
+            local key = self:expect("ident").value
+            self:expect("op", "=")
+            local value = self:parse_expr()
+            fields[#fields + 1] = { key = key, value = value }
+          until not self:accept_comma()
+        end
+        self:expect("punct", "}")
+      end
+      return { kind = "construct", tag = t.value, fields = fields, line = t.line, col = t.col }
+    end
+    return { kind = "ident", name = t.value, line = t.line, col = t.col }
+  end
   if self:at("punct", "(") then
     self:next()
     -- parse_expr_or_form so a parenthesized form (match/if/fn) is usable as a
@@ -235,6 +255,11 @@ function Parser:parse_program()
 end
 
 function Parser:parse_statement()
+  if self:at("keyword", "type") then return self:parse_type_decl() end
+  if self:at("keyword", "pub") and self:peek2() and self:peek2().type == "keyword"
+      and self:peek2().value == "type" then
+    return self:parse_type_decl()
+  end
   if self:at("keyword", "pub") or self:at("keyword", "let") then
     return self:parse_let()
   end
@@ -304,6 +329,34 @@ function Parser:parse_let()
   return { kind = "let", name = name, params = params, param_types = param_types,
            ret_type = ret_type, value_type = value_type, value = value,
            is_pub = is_pub, line = startt.line, col = startt.col }
+end
+
+function Parser:parse_type_decl()
+  local is_pub = false
+  local startt = self:peek()
+  if self:at("keyword", "pub") then is_pub = true; self:next() end
+  self:expect("keyword", "type")
+  local name = self:expect("ident").value
+  self:expect("op", "=")
+  local variants = {}
+  if self:at("punct", "|") then self:next() end  -- optional leading |
+  repeat
+    local cname = self:expect("ident")
+    if not cname.value:sub(1, 1):match("%u") then
+      self:fail("constructor names must be capitalized")
+    end
+    local vfields = {}
+    if self:at("punct", "{") then
+      self:next()
+      if not self:at("punct", "}") then
+        repeat vfields[#vfields + 1] = self:expect("ident").value until not self:accept_comma()
+      end
+      self:expect("punct", "}")
+    end
+    variants[#variants + 1] = { name = cname.value, fields = vfields }
+  until not (self:at("punct", "|") and self:next())
+  return { kind = "type_decl", name = name, is_pub = is_pub, variants = variants,
+           line = startt.line, col = startt.col }
 end
 
 function Parser:parse_block_or_expr()
@@ -380,6 +433,24 @@ function Parser:parse_pattern()
     return { kind = "lit", value = lit.value, lit_kind = lit.kind }
   end
   local id = self:expect("ident")
+  if id.value:sub(1, 1):match("%u") then
+    -- uppercase = constructor pattern: `Ctor { field-pats }` or nullary `Ctor`
+    local fields = {}
+    if self:at("punct", "{") then
+      self:next()
+      if not self:at("punct", "}") then
+        repeat
+          local key = self:expect("ident").value
+          local p
+          if self:at("op", ":") then self:next(); p = self:parse_pattern()
+          else p = { kind = "var", name = key } end
+          fields[#fields + 1] = { key = key, pat = p }
+        until not self:accept_comma()
+      end
+      self:expect("punct", "}")
+    end
+    return { kind = "ctor_pat", tag = id.value, fields = fields }
+  end
   return { kind = "var", name = id.value }
 end
 
