@@ -23,6 +23,11 @@ end
 
 -- a call whose args contain holes becomes a wrapping closure
 local function gen_call(node, ctx)
+  if node.fn.kind == "construct" then
+    -- `Some(x)` (reflexive ML call syntax) — constructors use named-field braces
+    error("constructor '" .. node.fn.tag .. "' is built with braces, not call syntax: "
+      .. "write " .. node.fn.tag .. " { field = ... }, not " .. node.fn.tag .. "(...)")
+  end
   local has_hole = false
   for _, a in ipairs(node.args) do if a.kind == "hole" then has_hole = true break end end
   if not has_hole then
@@ -235,14 +240,20 @@ expr = function(node, ctx)
     -- comprehension yield call results; field/ident/index are already valid index targets.
     -- (lambda is unreachable as an index object today since the parser can't put a bare `fn`
     -- in object position, but it is included so the guard is structurally complete.)
-    if obj_kind == "array" or obj_kind == "table" or obj_kind == "string" or obj_kind == "lambda" then
+    if obj_kind == "array" or obj_kind == "table" or obj_kind == "string"
+        or obj_kind == "lambda" or obj_kind == "construct" then
       obj_code = "(" .. obj_code .. ")"
     end
     return obj_code .. "[" .. expr(node.key, ctx) .. "]"
   end
   if k == "construct" then
     local parts = { "__tag = " .. quote_string(node.tag) }
-    for _, f in ipairs(node.fields) do parts[#parts + 1] = f.key .. " = " .. expr(f.value, ctx) end
+    for _, f in ipairs(node.fields) do
+      if f.key == "__tag" then
+        error("field name '__tag' is reserved (it holds the constructor discriminant)")
+      end
+      parts[#parts + 1] = f.key .. " = " .. expr(f.value, ctx)
+    end
     return "{ " .. table.concat(parts, ", ") .. " }"
   end
   if k == "if" then return gen_if(node, ctx) end
