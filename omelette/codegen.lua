@@ -136,6 +136,12 @@ local function compile_pattern(pat, access, ctx, tests, binds)
     for _, f in ipairs(pat.fields) do
       compile_pattern(f.pat, access .. "." .. f.key, ctx, tests, binds)
     end
+  elseif k == "ctor_pat" then
+    tests[#tests + 1] = "type(" .. access .. ') == "table"'
+    tests[#tests + 1] = access .. ".__tag == " .. quote_string(pat.tag)
+    for _, f in ipairs(pat.fields) do
+      compile_pattern(f.pat, access .. "." .. f.key, ctx, tests, binds)
+    end
   end
 end
 
@@ -234,6 +240,11 @@ expr = function(node, ctx)
     end
     return obj_code .. "[" .. expr(node.key, ctx) .. "]"
   end
+  if k == "construct" then
+    local parts = { "__tag = " .. quote_string(node.tag) }
+    for _, f in ipairs(node.fields) do parts[#parts + 1] = f.key .. " = " .. expr(f.value, ctx) end
+    return "{ " .. table.concat(parts, ", ") .. " }"
+  end
   if k == "if" then return gen_if(node, ctx) end
   if k == "match" then return gen_match(node, ctx) end
   error("codegen: cannot emit expression of kind '" .. tostring(k) .. "'")
@@ -330,7 +341,9 @@ function M.program(program)
     lines[#lines + 1] = "local " .. table.concat(names, ", ")
   end
   for _, node in ipairs(program.stmts) do
-    if node.kind ~= "let" then
+    if node.kind == "type_decl" then
+      -- erased: a type declaration emits no runtime code
+    elseif node.kind ~= "let" then
       -- bare top-level expression (side effect)
       lines[#lines + 1] = M.expr(node, ctx)
     else
