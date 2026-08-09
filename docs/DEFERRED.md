@@ -31,9 +31,19 @@ _Last updated: 2026-07-16 (after dict comprehensions + merge; stdlib complete)._
   absent, by design), **non-linear/hygiene** (`[a, a]` last-wins), and the **greedy nested-form
   arm** (parenthesize an inner `match`/`if` in an arm body to delimit it). ADT/constructor
   patterns + compile-time exhaustiveness need sum types (below). _Source: 2026-08-02 spec + reviews._
-- **Sum / variant types, exhaustiveness checking, type aliases** — also unlocks ADT/constructor
-  patterns and compile-time match exhaustiveness (the runtime no-match error becomes the fallback
-  the checker still permits). _Source: v1 spec._
+- **~~Sum / variant types (cycle 1: runtime ADTs)~~** — ✅ **DONE** (2026-08-08): `type` declarations
+  with capitalized named-field constructors (`Circle { radius = 5 }` → `{ __tag = "Circle", radius = 5 }`),
+  constructor patterns in `match`, tagged-record runtime rep. Dynamic; the `type` declaration is
+  erased. _Source: 2026-08-08 sum-types spec._
+- **Sum types — typed cycle & extensions (deferred):**
+  - **Field/arg type-checking + compile-time match exhaustiveness** — the checker reads `type`
+    declarations to type constructor fields and check coverage (tags are globally unique, so a
+    match's constructor patterns identify the type). The runtime no-match `error` becomes the
+    fallback the checker still permits. _The headline typed payoff._
+  - **Generics / parametric variants** (`type Option(a) = Some { value: a } | None`), **field
+    type annotations** in declarations, **positional-field constructors**, and **constructors as
+    first-class function values** (construction is currently inlined).
+  - `type aliases`. _Source: v1 spec + sum-types design._
 - **Custom operators, macros.** _Source: v1 spec._
 - **~~`pub let` recursion-by-name~~** — ✅ **DONE** (stdlib cycle): top-level bindings now emit
   as `local` + `M.name = name`, so `pub` functions recurse and cross-reference by name.
@@ -75,6 +85,11 @@ _Last updated: 2026-07-16 (after dict comprehensions + merge; stdlib complete)._
 
 ## Quality / cleanup follow-ups (none blocking)
 
+- **Literal-base field access / call wrapping** — indexing a literal base is parenthesized
+  (`({..})[k]`), but **field access** (`{a=1}.a`, `Circle { r = 5 }.r`) and **calling** a literal
+  emit unparenthesized, unloadable Lua 5.1 (`{..}.a` → syntax error). Pre-existing, but sum types
+  make `Ctor { .. }.field` idiomatic. Fix: generalize the index wrap-guard to the `field` and
+  `gen_call` paths. (Loud load-time error, never silent.) _Source: sum-types whole-branch review._
 - **Nested-IIFE indentation** — a comprehension/range nested in an indented position emits
   under-indented (but correct, runnable) Lua, because `M.expr` has no `pad` parameter.
   Cosmetic. _Source: comprehensions + range whole-branch reviews._
