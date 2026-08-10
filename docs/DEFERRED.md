@@ -4,7 +4,7 @@ A consolidated, durable record of things intentionally **not** built yet, with t
 rationale and where the decision was made. Individual specs' Non-Goals sections remain
 the authoritative detail; this file is the index so nothing gets lost between cycles.
 
-_Last updated: 2026-07-16 (after dict comprehensions + merge; stdlib complete)._
+_Last updated: 2026-08-08 (sum types cycle 1 runtime ADTs done; typed cycle + field-access wrapping recorded)._
 
 ## Language features
 
