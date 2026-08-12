@@ -94,8 +94,13 @@ function Checker:build_registry(program)
       self.types[node.name] = entry
       for _, v in ipairs(node.variants) do
         if self.ctor_owner[v.name] then
-          self:err("constructor '" .. v.name .. "' declared in both '"
-            .. self.ctor_owner[v.name].type .. "' and '" .. node.name .. "'", node)
+          local prev = self.ctor_owner[v.name].type
+          if prev == node.name then
+            self:err("constructor '" .. v.name .. "' declared twice in '" .. node.name .. "'", node)
+          else
+            self:err("constructor '" .. v.name .. "' declared in both '"
+              .. prev .. "' and '" .. node.name .. "'", node)
+          end
         end
         entry.ctors[#entry.ctors + 1] = v.name
         entry.fields[v.name] = v.fields
