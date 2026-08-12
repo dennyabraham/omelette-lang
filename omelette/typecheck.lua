@@ -129,6 +129,41 @@ function Checker:validate_pattern(pat, at)
   end
 end
 
+-- match exhaustiveness: only over declared variants; guarded arms count as covered;
+-- an unguarded top-level var/wildcard arm is a catch-all.
+function Checker:check_exhaustive(node)
+  local tags, seen, has_catchall = {}, {}, false
+  for _, c in ipairs(node.cases) do
+    local pk = c.pattern.kind
+    if (pk == "var" or pk == "wildcard") and not c.guard then
+      has_catchall = true
+    elseif pk == "ctor_pat" then
+      if not seen[c.pattern.tag] then seen[c.pattern.tag] = true; tags[#tags + 1] = c.pattern.tag end
+    end
+  end
+  if #tags == 0 or has_catchall then return end   -- non-variant match, or covered
+  local owner_type
+  for _, tag in ipairs(tags) do
+    local owner = self.ctor_owner[tag]
+    if not owner then return end                  -- undeclared → lenient
+    if owner_type == nil then
+      owner_type = owner.type
+    elseif owner_type ~= owner.type then
+      self:err("match mixes constructors of different types ('" .. owner_type
+        .. "' and '" .. owner.type .. "')", node)
+      return
+    end
+  end
+  local missing = {}
+  for _, ctor in ipairs(self.types[owner_type].ctors) do
+    if not seen[ctor] then missing[#missing + 1] = ctor end
+  end
+  if #missing > 0 then
+    self:err("non-exhaustive match on '" .. owner_type .. "': missing "
+      .. table.concat(missing, ", "), node)
+  end
+end
+
 function Checker:synth(node, env)
   local k = node.kind
   if k == "number" then return NUMBER end
@@ -198,6 +233,7 @@ function Checker:synth(node, env)
       local bt = self:synth(c.body, s)
       if ty == nil then ty = bt elseif ty.kind ~= bt.kind then ty = ANY end
     end
+    self:check_exhaustive(node)
     return ty or ANY
   end
   if k == "block" then
