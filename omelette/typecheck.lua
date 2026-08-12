@@ -84,6 +84,51 @@ end
 local ARITH = { ["+"]=true, ["-"]=true, ["*"]=true, ["/"]=true, ["%"]=true }
 local CMP = { ["=="]=true, ["~="]=true, ["<"]=true, ["<="]=true, [">"]=true, [">="]=true }
 
+-- build the variant registry from all top-level type declarations
+function Checker:build_registry(program)
+  self.types = {}
+  self.ctor_owner = {}
+  for _, node in ipairs(program.stmts) do
+    if node.kind == "type_decl" then
+      local entry = { ctors = {}, fields = {} }
+      self.types[node.name] = entry
+      for _, v in ipairs(node.variants) do
+        if self.ctor_owner[v.name] then
+          self:err("constructor '" .. v.name .. "' declared in both '"
+            .. self.ctor_owner[v.name].type .. "' and '" .. node.name .. "'", node)
+        end
+        entry.ctors[#entry.ctors + 1] = v.name
+        entry.fields[v.name] = v.fields
+        local fieldset = {}
+        for _, f in ipairs(v.fields) do fieldset[f] = true end
+        self.ctor_owner[v.name] = { type = node.name, fields = v.fields, fieldset = fieldset }
+      end
+    end
+  end
+end
+
+-- validate constructor patterns anywhere in a pattern tree (declared tag → fields must be a
+-- subset of the declared fields). `at` is the enclosing match node (patterns carry no line/col).
+function Checker:validate_pattern(pat, at)
+  local k = pat.kind
+  if k == "ctor_pat" then
+    local owner = self.ctor_owner[pat.tag]
+    if owner then
+      for _, f in ipairs(pat.fields) do
+        if not owner.fieldset[f.key] then
+          self:err("unknown field '" .. f.key .. "' in pattern for constructor '" .. pat.tag
+            .. "' (fields: " .. table.concat(owner.fields, ", ") .. ")", at)
+        end
+      end
+    end
+    for _, f in ipairs(pat.fields) do self:validate_pattern(f.pat, at) end
+  elseif k == "array_pat" then
+    for _, p in ipairs(pat.elems) do self:validate_pattern(p, at) end
+  elseif k == "record_pat" then
+    for _, f in ipairs(pat.fields) do self:validate_pattern(f.pat, at) end
+  end
+end
+
 function Checker:synth(node, env)
   local k = node.kind
   if k == "number" then return NUMBER end
@@ -144,6 +189,7 @@ function Checker:synth(node, env)
     self:synth(node.subject, env)
     local ty
     for _, c in ipairs(node.cases) do
+      self:validate_pattern(c.pattern, node)
       local s = scope(env)
       local names = {}
       collect_pattern_vars(c.pattern, names)
@@ -163,6 +209,22 @@ function Checker:synth(node, env)
   if k == "table" then for _, f in ipairs(node.fields) do self:synth(f.value, env) end; return ANY end
   if k == "construct" then
     for _, f in ipairs(node.fields) do self:synth(f.value, env) end
+    local owner = self.ctor_owner and self.ctor_owner[node.tag]
+    if owner then
+      local provided = {}
+      for _, f in ipairs(node.fields) do
+        provided[f.key] = true
+        if not owner.fieldset[f.key] then
+          self:err("unknown field '" .. f.key .. "' for constructor '" .. node.tag
+            .. "' (fields: " .. table.concat(owner.fields, ", ") .. ")", node)
+        end
+      end
+      for _, fname in ipairs(owner.fields) do
+        if not provided[fname] then
+          self:err("missing field '" .. fname .. "' for constructor '" .. node.tag .. "'", node)
+        end
+      end
+    end
     return ANY
   end
   -- comprehension / range / dict_comprehension: collection typing is cycle 2 -> any (not walked)
@@ -226,6 +288,7 @@ end
 
 function M.check(program)
   local c = new_checker()
+  c:build_registry(program)
   local genv = scope(nil)
   -- pass 1: declare all top-level binding types (so calls resolve regardless of order)
   for _, node in ipairs(program.stmts) do
