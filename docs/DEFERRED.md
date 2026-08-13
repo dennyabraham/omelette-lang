@@ -4,7 +4,7 @@ A consolidated, durable record of things intentionally **not** built yet, with t
 rationale and where the decision was made. Individual specs' Non-Goals sections remain
 the authoritative detail; this file is the index so nothing gets lost between cycles.
 
-_Last updated: 2026-08-08 (sum types cycle 1 runtime ADTs done; typed cycle + field-access wrapping recorded)._
+_Last updated: 2026-08-11 (typed sum types / structural checking done: exhaustiveness + construction/pattern validation)._
 
 ## Language features
 
@@ -35,15 +35,21 @@ _Last updated: 2026-08-08 (sum types cycle 1 runtime ADTs done; typed cycle + fi
   with capitalized named-field constructors (`Circle { radius = 5 }` → `{ __tag = "Circle", radius = 5 }`),
   constructor patterns in `match`, tagged-record runtime rep. Dynamic; the `type` declaration is
   erased. _Source: 2026-08-08 sum-types spec._
-- **Sum types — typed cycle & extensions (deferred):**
-  - **Field/arg type-checking + compile-time match exhaustiveness** — the checker reads `type`
-    declarations to type constructor fields and check coverage (tags are globally unique, so a
-    match's constructor patterns identify the type). The runtime no-match `error` becomes the
-    fallback the checker still permits. _The headline typed payoff._
-  - **Generics / parametric variants** (`type Option(a) = Some { value: a } | None`), **field
-    type annotations** in declarations, **positional-field constructors**, and **constructors as
-    first-class function values** (construction is currently inlined).
-  - `type aliases`. _Source: v1 spec + sum-types design._
+- **~~Typed sum types (structural checking)~~** — ✅ **DONE** (2026-08-11): the checker builds a
+  variant registry from `type` declarations and adds three blocking checks — **match
+  exhaustiveness** (missing constructors named), **construction validation** (wrong/missing/extra
+  fields), and **constructor-pattern validation**. Names only, no field types; lenient on
+  undeclared constructors; guarded arm counts as covered; opt-in (runtime never checks).
+  _Source: 2026-08-10 typed-sum-types spec._
+- **Sum types — remaining typed layer & extensions (deferred):**
+  - **Field/argument type checking** — `radius` is a `number`: needs **field type annotations**
+    in declarations (`{ radius: number }`) + optional-typing collection types; then type
+    `construct`/`ctor_pat` payloads.
+  - **Generics / parametric variants** (`type Option(a) = Some { value: a } | None`),
+    **positional-field constructors**, **constructors as first-class function values**
+    (construction is inlined), **type aliases**.
+  - **Rust-strict guards** (a guarded-only constructor is non-exhaustive), **redundant/unreachable
+    arm warnings**, and a **warning** severity in the diagnostic model. _Source: v1 spec + sum-types designs._
 - **Custom operators, macros.** _Source: v1 spec._
 - **~~`pub let` recursion-by-name~~** — ✅ **DONE** (stdlib cycle): top-level bindings now emit
   as `local` + `M.name = name`, so `pub` functions recurse and cross-reference by name.
