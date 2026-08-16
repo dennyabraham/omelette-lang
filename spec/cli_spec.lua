@@ -34,4 +34,18 @@ h.describe("cli", function()
     h.truthy(code ~= 0)
     h.truthy(out:find("usage"))
   end)
+  h.it("run installs the searcher so a program can require the stdlib", function()
+    -- resolves require("std.list") -> ./std/list.egg (CWD-relative), the same path
+    -- the guide's stdlib examples rely on
+    local buf, oldprint = {}, print
+    _G.print = function(...)
+      local p, n = {}, select("#", ...)
+      for i = 1, n do p[i] = tostring((select(i, ...))) end
+      buf[#buf + 1] = table.concat(p, "\t")
+    end
+    local code = cli.main({ "run", "spec/fixtures/uses_stdlib.egg" })
+    _G.print = oldprint
+    h.eq(code, 0)
+    h.truthy(table.concat(buf, "\n"):find("10"))
+  end)
 end)

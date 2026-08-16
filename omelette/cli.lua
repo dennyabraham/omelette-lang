@@ -79,6 +79,9 @@ local function cmd_run(argv)
     io.write(errors.render(errors.new("cannot read file '" .. tostring(file) .. "'", 1, 1)) .. "\n")
     return 1
   end
+  -- install the .egg require-hook so the program can `require("std.list")` and
+  -- sibling .egg modules (resolved relative to the current directory)
+  require("omelette.searcher").install()
   local lua, cerr = compiler.compile(src, { check = not has_flag(argv, "--no-check") })
   if not lua then io.write(errors.render(cerr) .. "\n"); return 1 end
   local _, err = compiler.eval(src, file)   -- eval re-compiles without check; fine (already validated)
