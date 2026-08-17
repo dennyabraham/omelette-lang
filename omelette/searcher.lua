@@ -32,6 +32,9 @@ function M.install(extra_roots)
     for _, r in ipairs(extra_roots) do table.insert(roots, 1, r) end
   end
   local searchers = package.searchers or package.loaders
+  -- idempotent: don't re-register the same loader (matters for long-lived hosts —
+  -- a REPL or editor plugin — that may install() more than once in one process)
+  for _, s in ipairs(searchers) do if s == loader then return end end
   table.insert(searchers, loader)
 end
 
