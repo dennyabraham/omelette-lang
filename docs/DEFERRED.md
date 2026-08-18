@@ -4,7 +4,7 @@ A consolidated, durable record of things intentionally **not** built yet, with t
 rationale and where the decision was made. Individual specs' Non-Goals sections remain
 the authoritative detail; this file is the index so nothing gets lost between cycles.
 
-_Last updated: 2026-08-11 (typed sum types / structural checking done: exhaustiveness + construction/pattern validation)._
+_Last updated: 2026-08-16 (runnable docs done; searcher installs on run + idempotent; stdlib-distribution + website recorded)._
 
 ## Language features
 
@@ -85,6 +85,19 @@ _Last updated: 2026-08-11 (typed sum types / structural checking done: exhaustiv
   Remaining opt-ins when ready: **LuaRocks publish** activates once the repo is public and a
   `LUAROCKS_API_KEY` secret is set (the release workflow's step is already gated on both);
   the first tagged release requires a matching `## [X.Y.Z]` CHANGELOG entry.
+- **~~Runnable documentation~~** — ✅ **DONE** (2026-08-16): `docs/guide.md` (terse, example-driven),
+  every ` ```egg ` example compiled/run in the test suite (hence CI) via `spec/support/doctest.lua`
+  — smoke / `output` / `error` modes, so the guide can't drift. _Source: 2026-08-13 runnable-docs spec._
+- **Static website + browser playground** — GitHub Pages: landing + the guide + install + a
+  Fengari-based "try it" (compile Omelette→Lua and run client-side). Presents the runnable guide.
+  _The presentation cycle; deferred from runnable-docs._
+- **Stdlib distribution / discovery** — the `.egg` searcher resolves `require("std.*")` **relative
+  to the CWD** (`./std/*.egg`), so `omelette run` finds the stdlib only when run from the repo. A
+  proper install (LuaRocks / the single-file amalgam) needs the stdlib bundled or on a resolvable
+  path. _Source: runnable-docs (searcher fix)._
+- **Generative / property-based testing** — pure-Lua fuzzing asserting invariants (random token
+  streams never crash the parser; every parseable program emits `load()`-able Lua; parse→emit
+  stable). _Backlogged._
 - **Performance / benchmark harness** — compare codegen quality vs hand-written Lua. _Source: v1 spec._
 - **`omelette test`** (thin busted wrapper), **formatter** (`eggfmt`), **LSP**. _Source: v1 spec._
 - **Full source maps** — beyond the light `--[[omelette:LINE]]` comments. _Source: v1 spec._
@@ -104,8 +117,8 @@ _Last updated: 2026-08-11 (typed sum types / structural checking done: exhaustiv
 - **CLI `--out` write error** reports source position `1:1` (cosmetic). _Source: v1 / indexing reviews._
 - **Parser `at`/`peek` overshoot guard** — safe today via the lexer's EOF token; a nil-guard
   would harden it. _Source: v1 review._
-- **`searcher.install()` idempotency** — re-registers the loader and accumulates roots on each
-  call. _Source: v1 review._
+- **~~`searcher.install()` idempotency~~** — ✅ **DONE** (2026-08-16): guards against
+  re-registering the loader (roots still accumulate, harmless). _Source: runnable-docs review._
 
 ## Standard library
 
