@@ -1,13 +1,16 @@
 local h = require("spec.support.harness")
 local site = require("site.build")
 
--- run a driver in a FRESH luajit (no ./ on package.path), so require resolves
--- ONLY through the bundle's package.preload + embedded-std searcher — the same
--- isolation Fengari has in the browser.
+-- run a driver in a FRESH luajit with package.path/cpath ZEROED after loading the
+-- bundle — so require resolves ONLY through the bundle's package.preload + embedded-std
+-- searcher, with NO filesystem fallback. This is the same isolation Fengari has in the
+-- browser: a module missing from the bundle fails here (it can't silently load from ./).
 local function run_fresh(bundle, driver_body)
   local tmpb, tmpd = os.tmpname(), os.tmpname() .. ".lua"
   local fb = io.open(tmpb, "w"); fb:write(bundle); fb:close()
-  local fd = io.open(tmpd, "w"); fd:write('dofile("' .. tmpb .. '")\n' .. driver_body); fd:close()
+  local fd = io.open(tmpd, "w")
+  fd:write('dofile("' .. tmpb .. '")\npackage.path = ""; package.cpath = ""\n' .. driver_body)
+  fd:close()
   local p = io.popen('luajit "' .. tmpd .. '" 2>&1')
   local out = p:read("*a"); p:close()
   os.remove(tmpb); os.remove(tmpd)
