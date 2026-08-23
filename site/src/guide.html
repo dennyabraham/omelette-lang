@@ -8,6 +8,9 @@
 <script>
 fetch("guide.md").then(function(r){return r.text();}).then(function(md){
   document.getElementById("guide").innerHTML = marked.parse(md);
+}).catch(function(){
+  document.getElementById("guide").textContent =
+    "Could not load the guide — serve the site over http (run `lua site/build.lua --serve`); file:// won't work.";
 });
 </script>
 </body></html>

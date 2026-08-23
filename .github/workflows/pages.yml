@@ -6,8 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  pages: write
-  id-token: write
+  # NB: no `pages: write` / `id-token: write` — those are DEPLOY permissions. This
+  # job only builds + uploads an artifact; it cannot publish. The future deploy PR
+  # adds them back alongside the deploy step, so the escalation is visible in review.
 jobs:
   build:
     runs-on: ubuntu-latest
