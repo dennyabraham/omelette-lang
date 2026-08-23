@@ -11,6 +11,9 @@
       return;
     }
     out.textContent = "Ready. Press Run.";
+  }).catch(function () {
+    out.textContent = "Could not load the compiler — serve the site over http "
+      + "(run `lua site/build.lua --serve`). Opening the file directly (file://) won't work.";
   });
 
   // set the Lua global __src to the editor contents, run a fixed driver, read __out
