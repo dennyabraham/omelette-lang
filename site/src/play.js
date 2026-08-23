@@ -31,9 +31,15 @@
     "local c = require('omelette.compiler')",
     "local buf, oldprint = {}, print",
     "print = function(...) local t={} for i=1,select('#',...) do t[i]=tostring((select(i,...))) end buf[#buf+1]=table.concat(t,'\\t') end",
-    "local mod, err = c.eval(__src)",
+    // pcall the eval: compiler.eval does not pcall the running chunk, so a *runtime*
+    // error in the user's program throws — catch it and show it in the output pane
+    // (with any print output produced before it) instead of an 'internal error'.
+    "local ok, mod, err = pcall(c.eval, __src)",
     "print = oldprint",
-    "if err then __out = '[error] '..tostring(err.message) else __out = table.concat(buf, '\\n') end",
+    "local pre = table.concat(buf, '\\n')",
+    "if not ok then __out = (pre ~= '' and pre..'\\n' or '') .. '[error] '..tostring(mod)",
+    "elseif err then __out = '[error] '..tostring(err.message)",
+    "else __out = pre end",
   ].join("\n");
 
   var LUA = "local lua, err = require('omelette.compiler').compile(__src); __out = lua or ('[error] '..(err and err.message or '?'))";
