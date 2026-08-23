@@ -1,0 +1,8 @@
+{
+  "name": "omelette-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Browser end-to-end tests for the Omelette playground (CI-only).",
+  "scripts": { "test": "playwright test" },
+  "devDependencies": { "@playwright/test": "^1.48.0" }
+}
