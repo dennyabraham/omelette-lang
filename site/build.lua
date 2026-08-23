@@ -59,12 +59,15 @@ function M.build()
   os.execute("mkdir -p site/dist")
   write("site/dist/omelette-browser.lua", M.build_bundle())
   copy("docs/guide.md", "site/dist/guide.md")
-  for _, f in ipairs({ "index.html", "guide.html", "play.html", "style.css", "play.js" }) do
+  for _, f in ipairs({ "index.html", "guide.html", "play.html", "site.css", "play.js" }) do
     copy("site/src/" .. f, "site/dist/" .. f)
   end
-  for _, f in ipairs({ "fengari-web.js", "marked.min.js" }) do
+  -- vendored css + fonts
+  for _, f in ipairs({ "fengari-web.js", "marked.min.js", "tufte.css" }) do
     copy("site/vendor/" .. f, "site/dist/" .. f)
   end
+  -- et-book fonts (recursive copy via shell; portable enough for the build)
+  os.execute("mkdir -p site/dist/et-book && cp -R site/vendor/et-book/. site/dist/et-book/")
 end
 
 -- run directly: `lua site/build.lua [--serve]`

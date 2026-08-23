@@ -7,6 +7,12 @@ test("landing page loads with nav links", async ({ page }) => {
   await expect(page.locator('a[href="play.html"]').first()).toBeVisible();
 });
 
+test("tufte styling is applied", async ({ page }) => {
+  await page.goto("/index.html");
+  const family = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
+  expect(family.toLowerCase()).toContain("et-book");
+});
+
 test("guide renders from docs/guide.md via marked", async ({ page }) => {
   await page.goto("/guide.html");
   // marked turns the markdown into headings; wait for one inside #guide
