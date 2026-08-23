@@ -48,4 +48,33 @@ end)
   return table.concat(parts, "\n")
 end
 
+local function write(path, data)
+  local fh = assert(io.open(path, "w"), "cannot write " .. path)
+  fh:write(data); fh:close()
+end
+
+local function copy(from, to) write(to, read(from)) end
+
+function M.build()
+  os.execute("mkdir -p site/dist")
+  write("site/dist/omelette-browser.lua", M.build_bundle())
+  copy("docs/guide.md", "site/dist/guide.md")
+  for _, f in ipairs({ "index.html", "guide.html", "play.html", "style.css", "play.js" }) do
+    copy("site/src/" .. f, "site/dist/" .. f)
+  end
+  for _, f in ipairs({ "fengari-web.js", "marked.min.js" }) do
+    copy("site/vendor/" .. f, "site/dist/" .. f)
+  end
+end
+
+-- run directly: `lua site/build.lua [--serve]`
+if arg and arg[0] and arg[0]:find("build") and not package.loaded["spec.support.harness"] then
+  M.build()
+  io.write("built site/dist/\n")
+  if arg[1] == "--serve" then
+    io.write("serving http://localhost:8000  (Ctrl-C to stop)\n")
+    os.execute("cd site/dist && python3 -m http.server 8000")
+  end
+end
+
 return M
