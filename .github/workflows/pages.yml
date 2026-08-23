@@ -1,0 +1,23 @@
+name: Pages (manual)
+# Manual only — the site is NOT auto-published. Publishing also requires enabling
+# GitHub Pages in repo settings (kept OFF until the site is reviewed + the prose
+# is rewritten). This job only builds and uploads the artifact when dispatched.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leafo/gh-actions-lua@v13
+        with:
+          luaVersion: "luajit"
+      - name: Build site
+        run: lua site/build.lua
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
