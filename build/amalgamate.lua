@@ -2,7 +2,7 @@
 local M = {}
 
 local MODULES = {
-  "lexer", "errors", "resolver", "parser", "codegen",
+  "lexer", "errors", "resolver", "parser", "codegen", "typecheck",
   "compiler", "searcher", "repl", "cli", "init",
 }
 
@@ -20,7 +20,9 @@ function M.build()
     parts[#parts + 1] = read("omelette/" .. name .. ".lua")
     parts[#parts + 1] = "end"
   end
-  parts[#parts + 1] = 'return require("omelette.cli").main(arg)'
+  -- os.exit with the CLI's status (a top-level `return` is ignored, so the
+  -- single-file binary would otherwise always exit 0 — breaking `check` in scripts)
+  parts[#parts + 1] = 'os.exit(require("omelette.cli").main(arg))'
   return table.concat(parts, "\n")
 end
 
