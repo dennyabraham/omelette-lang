@@ -1,0 +1,52 @@
+/* OKLCH color tokens — one accent hue, tints as uniform lightness steps.
+   Light defaults; a dark override mirrors tufte.css's prefers-color-scheme block. */
+:root {
+  --accent:        oklch(0.55 0.15 35);
+  --accent-strong: oklch(0.45 0.16 35);
+  --muted:         oklch(0.55 0.02 60);
+  --rule:          oklch(0.88 0.01 60);
+  --code-bg:       oklch(0.96 0.008 75);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent:        oklch(0.75 0.14 45);
+    --accent-strong: oklch(0.82 0.13 45);
+    --muted:         oklch(0.72 0.02 60);
+    --rule:          oklch(0.32 0.01 60);
+    --code-bg:       oklch(0.26 0.01 75);
+  }
+}
+
+/* links + brand use the accent */
+a { color: var(--accent); }
+a:hover { color: var(--accent-strong); }
+
+/* full-width header nav (tufte leaves this to us) */
+header {
+  display: flex; gap: 1.4rem; align-items: baseline;
+  padding: 1rem 5%; border-bottom: 1px solid var(--rule); margin-bottom: 2rem;
+}
+header .brand { font-weight: 700; color: var(--accent); }
+header a { text-decoration: none; }
+
+/* buttons */
+a.button, .controls button {
+  font: inherit; cursor: pointer; border-radius: 4px;
+  border: 1px solid var(--accent); color: var(--accent); background: transparent;
+  padding: 0.4rem 0.9rem; margin: 0.3rem 0.4rem 0.3rem 0; text-decoration: none;
+  display: inline-block;
+}
+a.button:hover, .controls button:hover { background: var(--accent); color: #fffff8; }
+
+/* playground panes (not part of tufte) */
+#editor, #output {
+  width: 100%; font-family: Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.85rem;
+}
+#editor { height: 18rem; padding: 0.7rem; border: 1px solid var(--rule); border-radius: 4px; }
+#output {
+  white-space: pre-wrap; background: var(--code-bg); color: inherit;
+  padding: 0.7rem; border-radius: 4px; min-height: 6rem; margin-top: 0.6rem;
+}
+
+/* keep code blocks legible on the cream background */
+pre > code, code { background: var(--code-bg); }

@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Omelette Playground</title><link rel="stylesheet" href="style.css"></head>
+<title>Omelette Playground</title><link rel="stylesheet" href="tufte.css"><link rel="stylesheet" href="site.css"></head>
 <body>
 <header><span class="brand">Omelette</span><a href="index.html">Home</a><a href="guide.html">Guide</a><a href="play.html">Playground</a><a href="https://github.com/dennyabraham/omelette-lang">GitHub</a></header>
-<main>
+<article>
 <h1>Playground</h1>
 <p>Runs the real Omelette compiler in your browser (via Fengari). Nothing is sent to a server.</p>
 <textarea id="editor" spellcheck="false">type Shape = | Circle { radius } | Origin
@@ -24,4 +24,5 @@ print(area(Circle { radius = 3 }))
 <!-- fengari-web.js provides the Lua VM; play.js fetches and runs omelette-browser.lua in it -->
 <script src="fengari-web.js"></script>
 <script src="play.js"></script>
+</article>
 </body></html>

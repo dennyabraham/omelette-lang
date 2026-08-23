@@ -6,9 +6,11 @@ h.describe("site build", function()
     site.build()
     local expected = {
       "site/dist/index.html", "site/dist/guide.html", "site/dist/play.html",
-      "site/dist/style.css", "site/dist/play.js", "site/dist/guide.md",
+      "site/dist/site.css", "site/dist/play.js", "site/dist/guide.md",
       "site/dist/omelette-browser.lua",
       "site/dist/fengari-web.js", "site/dist/marked.min.js",
+      "site/dist/tufte.css",
+      "site/dist/et-book/et-book-roman-line-figures/et-book-roman-line-figures.woff",
     }
     for _, path in ipairs(expected) do
       local fh = io.open(path, "r")
@@ -22,6 +24,8 @@ h.describe("site build", function()
     local html = slurp("site/dist/play.html")
     h.truthy(html:find("fengari%-web%.js"))        -- the Lua VM
     h.truthy(html:find("play%.js"))                -- the wiring
+    h.truthy(html:find("tufte%.css"))
+    h.truthy(html:find("site%.css"))
     -- the bundle is fetched by play.js (not referenced in the HTML)
     h.truthy(slurp("site/dist/play.js"):find('fetch%("omelette%-browser%.lua"'))
   end)
