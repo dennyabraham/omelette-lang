@@ -4,7 +4,7 @@ A consolidated, durable record of things intentionally **not** built yet, with t
 rationale and where the decision was made. Individual specs' Non-Goals sections remain
 the authoritative detail; this file is the index so nothing gets lost between cycles.
 
-_Last updated: 2026-08-16 (runnable docs done; searcher installs on run + idempotent; stdlib-distribution + website recorded)._
+_Last updated: 2026-08-22 (static website + Fengari playground BUILT, unpublished; iambic + publish gates recorded)._
 
 ## Language features
 
@@ -88,9 +88,20 @@ _Last updated: 2026-08-16 (runnable docs done; searcher installs on run + idempo
 - **~~Runnable documentation~~** — ✅ **DONE** (2026-08-16): `docs/guide.md` (terse, example-driven),
   every ` ```egg ` example compiled/run in the test suite (hence CI) via `spec/support/doctest.lua`
   — smoke / `output` / `error` modes, so the guide can't drift. _Source: 2026-08-13 runnable-docs spec._
-- **Static website + browser playground** — GitHub Pages: landing + the guide + install + a
-  Fengari-based "try it" (compile Omelette→Lua and run client-side). Presents the runnable guide.
-  _The presentation cycle; deferred from runnable-docs._
+- **~~Static website + browser playground~~** — ✅ **BUILT** (2026-08-22), **NOT PUBLISHED**:
+  `site/` — landing + guide (renders `docs/guide.md`) + a Fengari playground running the real
+  compiler client-side (browser bundle: compiler incl. typecheck + embedded stdlib). `lua
+  site/build.lua [--serve]` for local review; a `workflow_dispatch`-only Pages workflow (no
+  deploy step, `contents:read` only). **Pre-public gates (blocking publish):** (a) owner's local
+  review — incl. the in-browser playground/rendering, which no agent can verify; (b) the
+  **iambic-pentameter rewrite** of all guide + site prose; (c) enabling Pages (needs a public
+  repo on Free, or a paid plan). _Source: 2026-08-18 static-website spec._
+- **Iambic-pentameter prose rewrite** — rewrite all `docs/guide.md` + `site/` copy in iambic
+  pentameter before the site goes public. A pre-public gate. _Source: 2026-08-18 owner request._
+- **CLI amalgam missing `typecheck`** — `build/amalgamate.lua` bundles the CLI but omits
+  `omelette.typecheck`, so the single-file `omelette`'s `check` (and `build`/`run` default
+  checking) fails. The **browser** bundle (`site/build.lua`) already includes it; align the CLI
+  amalgam the same way. _Source: static-website cycle._
 - **Stdlib distribution / discovery** — the `.egg` searcher resolves `require("std.*")` **relative
   to the CWD** (`./std/*.egg`), so `omelette run` finds the stdlib only when run from the repo. A
   proper install (LuaRocks / the single-file amalgam) needs the stdlib bundled or on a resolvable
