@@ -16,10 +16,13 @@ h.describe("site build", function()
       if fh then fh:close() end
     end
   end)
-  h.it("the built play.html references the bundle and fengari", function()
+  h.it("play.html loads fengari + play.js, and play.js fetches the bundle", function()
     site.build()
-    local fh = assert(io.open("site/dist/play.html", "r")); local s = fh:read("*a"); fh:close()
-    h.truthy(s:find("omelette%-browser%.lua"))
-    h.truthy(s:find("fengari%-web%.js"))
+    local function slurp(p) local fh = assert(io.open(p, "r")); local s = fh:read("*a"); fh:close(); return s end
+    local html = slurp("site/dist/play.html")
+    h.truthy(html:find("fengari%-web%.js"))        -- the Lua VM
+    h.truthy(html:find("play%.js"))                -- the wiring
+    -- the bundle is fetched by play.js (not referenced in the HTML)
+    h.truthy(slurp("site/dist/play.js"):find('fetch%("omelette%-browser%.lua"'))
   end)
 end)
