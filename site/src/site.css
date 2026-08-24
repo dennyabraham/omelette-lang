@@ -26,8 +26,21 @@ header {
   display: flex; gap: 1.4rem; align-items: baseline;
   padding: 1rem 5%; border-bottom: 1px solid var(--rule); margin-bottom: 2rem;
 }
-header .brand { font-weight: 700; color: var(--accent); }
+header .brand { font-weight: 700; font-size: 1.6rem; color: var(--accent); margin-right: 0.4rem; }
 header a { text-decoration: none; }
+
+/* rendered guide: label + tint the output/error blocks (marked adds language-* classes) */
+pre:has(code.language-output),
+pre:has(code.language-error) { position: relative; border-left: 3px solid var(--rule); }
+pre:has(code.language-output) { border-left-color: var(--muted); }
+pre:has(code.language-error)  { border-left-color: var(--accent); }
+pre:has(code.language-output)::before,
+pre:has(code.language-error)::before {
+  position: absolute; top: 0.2rem; right: 0.6rem;
+  font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
+}
+pre:has(code.language-output)::before { content: "output"; color: var(--muted); }
+pre:has(code.language-error)::before  { content: "error";  color: var(--accent); }
 
 /* buttons */
 a.button, .controls button {
