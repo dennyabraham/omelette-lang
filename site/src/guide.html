@@ -10,7 +10,7 @@ fetch("guide.md").then(function(r){return r.text();}).then(function(md){
   document.getElementById("guide").innerHTML = marked.parse(md);
 }).catch(function(){
   document.getElementById("guide").textContent =
-    "Could not load the guide — serve the site over http (run `lua site/build.lua --serve`); file:// won't work.";
+    "Could not load the guide. Serve the site over http (`lua site/build.lua --serve`); file:// won't work.";
 });
 </script>
 </body></html>

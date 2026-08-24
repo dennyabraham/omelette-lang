@@ -1,10 +1,31 @@
 # Omelette
 
-An ML-flavored language that transpiles to readable Lua 5.1.
+Omelette is a small ML that compiles to plain Lua 5.1. Values are immutable; the
+output reads like hand-written Lua.
 
-See `docs/guide.md` for the language guide — every example is verified in CI.
+```egg
+type Shape = | Circle { radius } | Origin
+let area s =
+  match s with
+  | Circle { radius } -> 3 * radius * radius
+  | Origin            -> 0
+print(area(Circle { radius = 2 }))   -- 12
+```
+
+## Commands
+
+- `omelette run file.egg` — compile and execute.
+- `omelette build file.egg` — compile to Lua and print or write it.
+- `omelette check file.egg` — type-check and report diagnostics.
+
+## Guide
+
+Read `docs/guide.md`. Every example there is compiled and run in CI, so the
+guide can't drift from the language.
 
 ## Develop
-Run tests: `luajit spec/run.lua`
 
-See `docs/superpowers/specs/` for the design and `docs/superpowers/plans/` for the build plan.
+Run the tests: `luajit spec/run.lua`.
+
+Design lives in `docs/superpowers/specs/`; the build plan in
+`docs/superpowers/plans/`.
