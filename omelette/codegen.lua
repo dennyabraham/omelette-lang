@@ -15,6 +15,17 @@ local BINOP_LUA = {
 local expr  -- forward declaration
 local gen_local_let, gen_fn_body  -- forward declarations for statement helpers
 
+-- A literal that can't be a Lua "prefix expression" (the base of an index/field/call)
+-- without parens: `{..}[k]`, `{..}.f`, `"s".f`, `(fn..)(x)` are all syntax errors in
+-- Lua 5.1. Wrap those bases in parens; everything else (ident/field/index/call results,
+-- self-parenthesizing binops/unops) is already a valid prefix.
+local PREFIX_NEEDS_PAREN = { array = true, table = true, string = true, lambda = true, construct = true }
+local function prefix(node, ctx)
+  local code = expr(node, ctx)
+  if PREFIX_NEEDS_PAREN[node.kind] then return "(" .. code .. ")" end
+  return code
+end
+
 local function gen_args(args, ctx)
   local parts = {}
   for _, a in ipairs(args) do parts[#parts + 1] = expr(a, ctx) end
@@ -31,7 +42,7 @@ local function gen_call(node, ctx)
   local has_hole = false
   for _, a in ipairs(node.args) do if a.kind == "hole" then has_hole = true break end end
   if not has_hole then
-    return expr(node.fn, ctx) .. "(" .. gen_args(node.args, ctx) .. ")"
+    return prefix(node.fn, ctx) .. "(" .. gen_args(node.args, ctx) .. ")"
   end
   local params, filled, idx = {}, {}, 0
   for _, a in ipairs(node.args) do
@@ -45,7 +56,7 @@ local function gen_call(node, ctx)
     end
   end
   return "(function(" .. table.concat(params, ", ") .. ") return "
-    .. expr(node.fn, ctx) .. "(" .. table.concat(filled, ", ") .. ") end)"
+    .. prefix(node.fn, ctx) .. "(" .. table.concat(filled, ", ") .. ") end)"
 end
 
 -- pipe: thread lhs as the first argument of rhs
@@ -202,7 +213,7 @@ expr = function(node, ctx)
   if k == "nil" then return "nil" end
   if k == "ident" then return node.name end
   if k == "lua_raw" then return node.code end
-  if k == "field" then return expr(node.obj, ctx) .. "." .. node.name end
+  if k == "field" then return prefix(node.obj, ctx) .. "." .. node.name end
   if k == "binop" then
     return "(" .. expr(node.lhs, ctx) .. " " .. BINOP_LUA[node.op] .. " " .. expr(node.rhs, ctx) .. ")"
   end
@@ -232,19 +243,7 @@ expr = function(node, ctx)
   if k == "dict_comprehension" then return gen_dict_comprehension(node, ctx) end
   if k == "range" then return gen_range(node, ctx) end
   if k == "index" then
-    local obj_kind = node.obj.kind
-    local obj_code = expr(node.obj, ctx)
-    -- Lua 5.1 disallows indexing a bare constructor/string/function literal directly
-    -- (`{..}[k]`, `"s"[k]`, `function()end[k]` are syntax errors), so wrap those in parens.
-    -- Other object kinds need no wrapping: binop/unop already self-parenthesize; call/pipe/
-    -- comprehension yield call results; field/ident/index are already valid index targets.
-    -- (lambda is unreachable as an index object today since the parser can't put a bare `fn`
-    -- in object position, but it is included so the guard is structurally complete.)
-    if obj_kind == "array" or obj_kind == "table" or obj_kind == "string"
-        or obj_kind == "lambda" or obj_kind == "construct" then
-      obj_code = "(" .. obj_code .. ")"
-    end
-    return obj_code .. "[" .. expr(node.key, ctx) .. "]"
+    return prefix(node.obj, ctx) .. "[" .. expr(node.key, ctx) .. "]"
   end
   if k == "construct" then
     local parts = { "__tag = " .. quote_string(node.tag) }

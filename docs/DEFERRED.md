@@ -129,11 +129,9 @@ _Last updated: 2026-08-23 (docs prose rewrite + Tufte/OKLCH styling; CLI amalgam
 
 ## Quality / cleanup follow-ups (none blocking)
 
-- **Literal-base field access / call wrapping** — indexing a literal base is parenthesized
-  (`({..})[k]`), but **field access** (`{a=1}.a`, `Circle { r = 5 }.r`) and **calling** a literal
-  emit unparenthesized, unloadable Lua 5.1 (`{..}.a` → syntax error). Pre-existing, but sum types
-  make `Ctor { .. }.field` idiomatic. Fix: generalize the index wrap-guard to the `field` and
-  `gen_call` paths. (Loud load-time error, never silent.) _Source: sum-types whole-branch review._
+- **~~Literal-base field access / call wrapping~~** — ✅ **DONE** (2026-08-23): a shared `prefix()`
+  helper parenthesizes a literal base of an index/field/call (`({..}).a`, `[1,2][k]`,
+  `(fn..)(x)`, `Circle {..}.field`), so all emit loadable Lua 5.1. _Source: sum-types review._
 - **Nested-IIFE indentation** — a comprehension/range nested in an indented position emits
   under-indented (but correct, runnable) Lua, because `M.expr` has no `pad` parameter.
   Cosmetic. _Source: comprehensions + range whole-branch reviews._
