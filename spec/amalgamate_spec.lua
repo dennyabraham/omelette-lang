@@ -45,4 +45,32 @@ h.describe("amalgamate", function()
     h.truthy(run("ok.egg"):find("EXIT=0", 1, true))  -- clean program exits 0
     os.execute('rm -rf "' .. dir .. '"')
   end)
+
+  h.it("bundles the stdlib as package.preload entries (self-contained std)", function()
+    local out = amalg.build()
+    h.truthy(out:find('package.preload%["std.list"%]'))
+    h.truthy(out:find('package.preload%["std.string"%]'))
+    h.truthy(out:find('package.preload%["std.table"%]'))
+    -- the std preload must precede the bootstrap so std is registered before main runs
+    h.truthy(out:find('package.preload%["std.list"%]') < out:find('os%.exit%(require%("omelette.cli"%)'))
+  end)
+
+  h.it("the single-file binary resolves require(\"std.list\") from OUTSIDE the repo", function()
+    -- write the binary + a std-using program into a temp dir with NO ./std/, then run it
+    -- there. A printed result proves std came from the embedded preload, not ./std/*.egg —
+    -- exactly an installed single-file omelette run from an arbitrary cwd. `; echo EXIT=$?`
+    -- captures the exit code portably (LuaJIT's io.popen:close does not return it).
+    local dir = os.tmpname() .. "_std"
+    os.execute('mkdir -p "' .. dir .. '"')
+    local function put(name, data) local f = assert(io.open(dir .. "/" .. name, "w")); f:write(data); f:close() end
+    put("omelette", amalg.build())
+    put("prog.egg", 'let list = require("std.list")\nprint(list.sum([1, 2, 3, 4]))\n')
+    local interp = (arg and arg[-1]) or "lua"   -- luajit locally; `lua` on both CI legs
+    local p = io.popen('cd "' .. dir .. '" && "' .. interp .. '" omelette run prog.egg 2>&1; echo EXIT=$?')
+    local out = p:read("*a"); p:close()
+    h.truthy(out:find("10", 1, true))            -- list.sum([1,2,3,4]) == 10
+    h.truthy(not out:find("not found", 1, true)) -- NOT a missing-module crash
+    h.truthy(out:find("EXIT=0", 1, true))        -- clean exit
+    os.execute('rm -rf "' .. dir .. '"')
+  end)
 end)

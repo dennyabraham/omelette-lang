@@ -1,6 +1,8 @@
 -- Bundle omelette/*.lua into one self-contained `omelette` script via package.preload.
 local M = {}
 
+local build_std = require("build.build-std")
+
 local MODULES = {
   "lexer", "errors", "resolver", "parser", "codegen", "typecheck",
   "compiler", "searcher", "repl", "cli", "init",
@@ -20,6 +22,9 @@ function M.build()
     parts[#parts + 1] = read("omelette/" .. name .. ".lua")
     parts[#parts + 1] = "end"
   end
+  -- embed the stdlib as package.preload["std.*"] so `require("std.list")` resolves from any
+  -- cwd (Lua's preload searcher precedes the .egg searcher); std/*.egg compiled at build time
+  parts[#parts + 1] = build_std.preload_block()
   -- os.exit with the CLI's status (a top-level `return` is ignored, so the
   -- single-file binary would otherwise always exit 0 — breaking `check` in scripts)
   parts[#parts + 1] = 'os.exit(require("omelette.cli").main(arg))'
