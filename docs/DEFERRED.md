@@ -4,7 +4,7 @@ A consolidated, durable record of things intentionally **not** built yet, with t
 rationale and where the decision was made. Individual specs' Non-Goals sections remain
 the authoritative detail; this file is the index so nothing gets lost between cycles.
 
-_Last updated: 2026-08-23 (docs prose rewrite + Tufte/OKLCH styling; CLI amalgam typecheck + exit-code fix)._
+_Last updated: 2026-08-24 (self-contained stdlib distribution: amalgam preload + LuaRocks command build)._
 
 ## Language features
 
@@ -116,10 +116,15 @@ _Last updated: 2026-08-23 (docs prose rewrite + Tufte/OKLCH styling; CLI amalgam
   `<textarea>` for CodeMirror/Monaco with an Omelette mode), and **editor grammars** (TextMate /
   tree-sitter for VS Code / Neovim — pairs with the deferred LSP). Keywords/operators/comments and
   the capitalized-constructor rule are the core token classes. _Source: docs-prose-tufte review._
-- **Stdlib distribution / discovery** — the `.egg` searcher resolves `require("std.*")` **relative
-  to the CWD** (`./std/*.egg`), so `omelette run` finds the stdlib only when run from the repo. A
-  proper install (LuaRocks / the single-file amalgam) needs the stdlib bundled or on a resolvable
-  path. _Source: runnable-docs (searcher fix)._
+- **~~Stdlib distribution / discovery~~** — ✅ **DONE** (2026-08-24): `std/*.egg` is compiled
+  to Lua at build time (`build/build-std.lua`) and embedded as `package.preload["std.*"]` in
+  the single-file binary, so `require("std.*")` resolves from any cwd. The LuaRocks rock uses a
+  command build that compiles std at install and ships every `omelette.*` module (fixing the
+  previously-missing `omelette.typecheck`). _Source: 2026-08-24 stdlib-distribution spec._
+- **End-to-end LuaRocks verification** — the rockspec's command build is validated
+  structurally (it parses; install covers modules + std + bin) but not exercised via a real
+  `luarocks build`/`install`, which is gated off while the repo is private. Verify in CI once
+  the repo is public. _Source: 2026-08-24 stdlib-distribution spec._
 - **Generative / property-based testing** — pure-Lua fuzzing asserting invariants (random token
   streams never crash the parser; every parseable program emits `load()`-able Lua; parse→emit
   stable). _Backlogged._
