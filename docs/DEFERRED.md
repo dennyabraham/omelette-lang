@@ -110,6 +110,12 @@ _Last updated: 2026-08-23 (docs prose rewrite + Tufte/OKLCH styling; pending own
 - **Site styling follow-ups (deferred):** dark mode is inherited from tufte.css but its OKLCH accents
   are untuned there; an Omelette code-block **syntax highlighter**; a fuller visual identity
   (logo/favicon). _Source: docs-prose-tufte spec._
+- **Syntax highlighting** — Omelette code renders as plain monospace everywhere. Needs an Omelette
+  grammar, in three (shared-but-distinct) forms: a **site highlighter** (a Prism/highlight.js
+  language def for the guide's ` ```egg ` blocks), a **highlighted playground editor** (swap the
+  `<textarea>` for CodeMirror/Monaco with an Omelette mode), and **editor grammars** (TextMate /
+  tree-sitter for VS Code / Neovim — pairs with the deferred LSP). Keywords/operators/comments and
+  the capitalized-constructor rule are the core token classes. _Source: docs-prose-tufte review._
 - **Stdlib distribution / discovery** — the `.egg` searcher resolves `require("std.*")` **relative
   to the CWD** (`./std/*.egg`), so `omelette run` finds the stdlib only when run from the repo. A
   proper install (LuaRocks / the single-file amalgam) needs the stdlib bundled or on a resolvable
