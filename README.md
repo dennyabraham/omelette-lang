@@ -26,6 +26,3 @@ guide can't drift from the language.
 ## Develop
 
 Run the tests: `luajit spec/run.lua`.
-
-Design lives in `docs/superpowers/specs/`; the build plan in
-`docs/superpowers/plans/`.
