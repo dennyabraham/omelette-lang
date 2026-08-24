@@ -76,8 +76,11 @@ if arg and arg[0] and arg[0]:find("build") and not package.loaded["spec.support.
   M.build()
   io.write("built site/dist/\n")
   if arg[1] == "--serve" then
-    io.write("serving http://localhost:8000  (Ctrl-C to stop)\n")
-    os.execute("cd site/dist && python3 -m http.server 8000")
+    -- uv provides a managed Python (pinned below), so the server doesn't depend
+    -- on whatever `python3` happens to be on PATH. `--serve PORT` overrides 8000.
+    local port = arg[2] or "8000"
+    io.write("serving http://localhost:" .. port .. "  (Ctrl-C to stop)\n")
+    os.execute("cd site/dist && uv run --python 3.13 python -m http.server " .. port)
   end
 end
 
