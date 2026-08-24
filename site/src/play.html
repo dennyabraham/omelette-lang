@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Omelette Playground</title><link rel="stylesheet" href="tufte.css"><link rel="stylesheet" href="site.css"></head>
+<title>Omelette Playground</title><link rel="stylesheet" href="tufte.css"><link rel="stylesheet" href="site.css"><link rel="stylesheet" href="code-input.min.css"></head>
 <body>
 <header><a href="index.html" class="brand">Omelette</a><a href="guide.html">Guide</a><a href="play.html">Playground</a><a href="https://github.com/dennyabraham/omelette-lang">GitHub</a></header>
 <article>
 <h1>Playground</h1>
 <p>Try the Omelette compiler in your browser. Nothing leaves your machine.</p>
-<textarea id="editor" spellcheck="false">type Shape = | Circle { radius } | Origin
+<code-input id="editor" language="omelette" template="omelette">type Shape = | Circle { radius } | Origin
 
 let area s =
   match s with
@@ -14,7 +14,7 @@ let area s =
   | Origin            -&gt; 0
 
 print(area(Circle { radius = 3 }))
-</textarea>
+</code-input>
 <div class="controls">
   <button id="run">Run</button>
   <button id="lua">Compiled Lua</button>
@@ -23,6 +23,10 @@ print(area(Circle { radius = 3 }))
 <div id="output">Loading compiler…</div>
 <!-- fengari-web.js provides the Lua VM; play.js fetches and runs omelette-browser.lua in it -->
 <script src="fengari-web.js"></script>
+<script src="prism.js"></script>
+<script src="prism-omelette.js"></script>
+<script src="code-input.min.js"></script>
+<script>codeInput.registerTemplate("omelette", new codeInput.templates.Prism(Prism));</script>
 <script src="play.js"></script>
 </article>
 </body></html>

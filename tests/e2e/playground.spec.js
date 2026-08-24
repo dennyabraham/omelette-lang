@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function editAndClick(page, src, button) {
-  await page.fill("#editor", src);
+  await page.fill("#editor textarea", src);
   await page.click(button);
 }
 
@@ -18,6 +18,10 @@ test("Run: a Shape area program prints 27", async ({ page }) => {
     "print(area(Circle { radius = 3 }))",
     "#run");
   await expect(page.locator("#output")).toContainText("27");
+});
+
+test("the editor highlights (a token span is present)", async ({ page }) => {
+  await expect(page.locator("#editor .token").first()).toBeVisible({ timeout: 20000 });
 });
 
 test("Compiled Lua: shows real generated Lua", async ({ page }) => {
