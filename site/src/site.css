@@ -63,3 +63,16 @@ a.button:hover, .controls button:hover { background: var(--accent); color: #ffff
 
 /* keep code blocks legible on the cream background */
 pre > code, code { background: var(--code-bg); }
+
+/* Prism token theme (OKLCH; matches the site palette, light + dark) */
+.token.comment { color: var(--muted); font-style: italic; }
+.token.keyword { color: var(--accent-strong); font-weight: 600; }
+.token.string { color: oklch(0.52 0.12 150); }
+.token.boolean, .token.number { color: oklch(0.55 0.14 45); }
+.token.class-name { color: oklch(0.52 0.14 285); }
+.token.operator, .token.punctuation { color: var(--muted); }
+@media (prefers-color-scheme: dark) {
+  .token.string { color: oklch(0.78 0.13 150); }
+  .token.boolean, .token.number { color: oklch(0.8 0.12 45); }
+  .token.class-name { color: oklch(0.8 0.12 285); }
+}

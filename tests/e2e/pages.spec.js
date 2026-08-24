@@ -19,4 +19,6 @@ test("guide renders from docs/guide.md via marked", async ({ page }) => {
   await expect(page.locator("#guide h1, #guide h2").first()).toBeVisible({ timeout: 20000 });
   // the loading placeholder is gone, real markup is present
   await expect(page.locator("#guide")).not.toContainText("Loading the guide");
+  // Prism highlighted the egg code blocks
+  await expect(page.locator("#guide .token").first()).toBeVisible({ timeout: 20000 });
 });

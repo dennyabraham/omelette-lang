@@ -5,12 +5,16 @@
 <header><a href="index.html" class="brand">Omelette</a><a href="guide.html">Guide</a><a href="play.html">Playground</a><a href="https://github.com/dennyabraham/omelette-lang">GitHub</a></header>
 <article id="guide">Loading the guide…</article>
 <script src="marked.min.js"></script>
+<script src="prism.js"></script>
+<script src="prism-omelette.js"></script>
 <script>
 fetch("guide.md").then(function(r){return r.text();}).then(function(md){
-  document.getElementById("guide").innerHTML = marked.parse(md);
+  var el = document.getElementById("guide");
+  el.innerHTML = marked.parse(md);
+  Prism.highlightAllUnder(el);
 }).catch(function(){
   document.getElementById("guide").textContent =
-    "Could not load the guide. Serve the site over http (`lua site/build.lua --serve`); file:// won't work.";
+    "Could not load the guide — serve the site over http (run `lua site/build.lua --serve`); file:// won't work.";
 });
 </script>
 </body></html>
