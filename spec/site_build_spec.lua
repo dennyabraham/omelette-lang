@@ -12,6 +12,7 @@ h.describe("site build", function()
       "site/dist/tufte.css",
       "site/dist/et-book/et-book-roman-line-figures/et-book-roman-line-figures.woff",
       "site/dist/prism.js", "site/dist/prism-omelette.js",
+      "site/dist/code-input.min.js", "site/dist/code-input.min.css",
     }
     for _, path in ipairs(expected) do
       local fh = io.open(path, "r")
@@ -33,6 +34,7 @@ h.describe("site build", function()
     h.truthy(html:find("play%.js"))                -- the wiring
     h.truthy(html:find("tufte%.css"))
     h.truthy(html:find("site%.css"))
+    h.truthy(html:find("code%-input"))
     -- the bundle is fetched by play.js (not referenced in the HTML)
     h.truthy(slurp("site/dist/play.js"):find('fetch%("omelette%-browser%.lua"'))
   end)

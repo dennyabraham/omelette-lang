@@ -63,7 +63,8 @@ function M.build()
     copy("site/src/" .. f, "site/dist/" .. f)
   end
   -- vendored css + fonts
-  for _, f in ipairs({ "fengari-web.js", "marked.min.js", "tufte.css", "prism.js" }) do
+  for _, f in ipairs({ "fengari-web.js", "marked.min.js", "tufte.css", "prism.js",
+                       "code-input.min.js", "code-input.min.css" }) do
     copy("site/vendor/" .. f, "site/dist/" .. f)
   end
   -- et-book fonts (recursive copy via shell; portable enough for the build)
