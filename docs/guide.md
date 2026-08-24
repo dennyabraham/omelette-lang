@@ -178,7 +178,7 @@ A mismatched annotation is a type error:
 let x: number = "hi"
 ```
 ```error
-number
+'x' is declared number but assigned string
 ```
 
 On a declared sum type, `match` must cover every constructor. Miss one and the
