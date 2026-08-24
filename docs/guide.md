@@ -212,9 +212,24 @@ HI
 2
 ```
 
-`std.list` also has `map`, `filter`, `reduce`, `reverse`, `sort`, `find`, and
-`take`/`drop`; `std.string` has `split`, `join`, `trim`, and
-`starts_with`/`ends_with`; `std.table` has `keys`, `values`, `has`, and `merge`.
+The full set (each takes its collection first, returns a new value):
+
+**`std.list`** — 26 functions.
+- access: `length(xs)` `is_empty(xs)` `first(xs)` `last(xs)` `get(xs, i)`
+- transform: `map(xs, f)` `filter(xs, pred)` `reduce(xs, f, init)` `each(xs, f)`
+- reorder: `reverse(xs)` `sort(xs)` `sort_by(xs, cmp)`
+- slice: `take(xs, n)` `drop(xs, n)` `concat(a, b)` `range(a, b)`
+- fold: `sum(xs)` `product(xs)` `min(xs)` `max(xs)`
+- search: `all(xs, pred)` `any(xs, pred)` `count(xs, pred)` `find(xs, pred)` `contains(xs, v)` `index_of(xs, v)`
+
+**`std.string`** — 11 functions.
+- `length(s)` `upper(s)` `lower(s)` `trim(s)` `rep(s, n)`
+- test: `starts_with(s, prefix)` `ends_with(s, suffix)` `contains(s, sub)`
+- build: `join(xs, sep)` `split(s, sep)` `replace(s, old, new)`
+
+**`std.table`** — 6 functions, over dicts.
+- `keys(d)` `values(d)` `size(d)` `get(d, k)` `has(d, k)` `merge(a, b)`
+- `merge` prefers `b` on shared keys.
 
 ```egg
 let list = require("std.list")
