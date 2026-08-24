@@ -4,7 +4,7 @@ A consolidated, durable record of things intentionally **not** built yet, with t
 rationale and where the decision was made. Individual specs' Non-Goals sections remain
 the authoritative detail; this file is the index so nothing gets lost between cycles.
 
-_Last updated: 2026-08-23 (docs prose rewrite + Tufte/OKLCH styling; pending owner review)._
+_Last updated: 2026-08-23 (docs prose rewrite + Tufte/OKLCH styling; CLI amalgam typecheck + exit-code fix)._
 
 ## Language features
 
@@ -93,9 +93,9 @@ _Last updated: 2026-08-23 (docs prose rewrite + Tufte/OKLCH styling; pending own
   compiler client-side (browser bundle: compiler incl. typecheck + embedded stdlib). `lua
   site/build.lua [--serve]` for local review; a `workflow_dispatch`-only Pages workflow (no
   deploy step, `contents:read` only). **Pre-public gates (blocking publish):** (a) owner's local
-  review — incl. the in-browser playground/rendering, which no agent can verify; (b) the
-  **iambic-pentameter rewrite** of all guide + site prose; (c) enabling Pages (needs a public
-  repo on Free, or a paid plan). _Source: 2026-08-18 static-website spec._
+  + visual review (the in-browser playground/rendering, which no agent can verify); (b) enabling
+  Pages (needs a public repo on Free, or a paid plan). The prose + Tufte styling polish is done
+  (see below). _Source: 2026-08-18 static-website spec._
 - **~~CLI amalgam missing `typecheck` / broken exit code~~** — ✅ **DONE** (2026-08-23):
   `build/amalgamate.lua` now bundles `omelette.typecheck` (so the single-file `omelette check`
   works with no filesystem), and its bootstrap `os.exit()`s the CLI status instead of a bare
@@ -107,9 +107,9 @@ _Last updated: 2026-08-23 (docs prose rewrite + Tufte/OKLCH styling; pending own
   fonts + an OKLCH token overlay. Guide's 18 verified examples byte-identical. **Still gated on the
   owner's editorial + visual review** (meter/terseness and the rendered site) via `--serve` before
   publishing. _Source: 2026-08-23 docs-prose-tufte spec._
-- **Site styling follow-ups (deferred):** dark mode is inherited from tufte.css but its OKLCH accents
-  are untuned there; an Omelette code-block **syntax highlighter**; a fuller visual identity
-  (logo/favicon). _Source: docs-prose-tufte spec._
+- **Site styling follow-ups (deferred):** tune tufte's inherited **dark mode** to the OKLCH accents;
+  a fuller **visual identity** (logo/favicon). (Syntax highlighting has its own entry below.)
+  _Source: docs-prose-tufte spec._
 - **Syntax highlighting** — Omelette code renders as plain monospace everywhere. Needs an Omelette
   grammar, in three (shared-but-distinct) forms: a **site highlighter** (a Prism/highlight.js
   language def for the guide's ` ```egg ` blocks), a **highlighted playground editor** (swap the
