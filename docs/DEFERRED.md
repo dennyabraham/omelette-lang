@@ -4,7 +4,7 @@ A consolidated, durable record of things intentionally **not** built yet, with t
 rationale and where the decision was made. Individual specs' Non-Goals sections remain
 the authoritative detail; this file is the index so nothing gets lost between cycles.
 
-_Last updated: 2026-08-23 (CLI amalgam: bundle typecheck + fix exit code)._
+_Last updated: 2026-08-23 (docs prose rewrite + Tufte/OKLCH styling; pending owner review)._
 
 ## Language features
 
@@ -96,13 +96,20 @@ _Last updated: 2026-08-23 (CLI amalgam: bundle typecheck + fix exit code)._
   review — incl. the in-browser playground/rendering, which no agent can verify; (b) the
   **iambic-pentameter rewrite** of all guide + site prose; (c) enabling Pages (needs a public
   repo on Free, or a paid plan). _Source: 2026-08-18 static-website spec._
-- **Iambic-pentameter prose rewrite** — rewrite all `docs/guide.md` + `site/` copy in iambic
-  pentameter before the site goes public. A pre-public gate. _Source: 2026-08-18 owner request._
 - **~~CLI amalgam missing `typecheck` / broken exit code~~** — ✅ **DONE** (2026-08-23):
   `build/amalgamate.lua` now bundles `omelette.typecheck` (so the single-file `omelette check`
   works with no filesystem), and its bootstrap `os.exit()`s the CLI status instead of a bare
   `return` (which was ignored → the binary always exited 0, so `check` couldn't fail a script).
   Verified end-to-end: `check` a bad program → diagnostic + exit 1; clean → exit 0. _Source: static-website cycle._
+- **~~Prose rewrite + Tufte/OKLCH styling~~** — ✅ **DONE** (2026-08-23; supersedes the
+  "iambic-pentameter" gate): README + `docs/guide.md` + site copy rewritten terse, LLMism-free,
+  with quiet mixed meter (no rhyme, unannounced); site restyled with vendored `tufte.css` + ET Book
+  fonts + an OKLCH token overlay. Guide's 18 verified examples byte-identical. **Still gated on the
+  owner's editorial + visual review** (meter/terseness and the rendered site) via `--serve` before
+  publishing. _Source: 2026-08-23 docs-prose-tufte spec._
+- **Site styling follow-ups (deferred):** dark mode is inherited from tufte.css but its OKLCH accents
+  are untuned there; an Omelette code-block **syntax highlighter**; a fuller visual identity
+  (logo/favicon). _Source: docs-prose-tufte spec._
 - **Stdlib distribution / discovery** — the `.egg` searcher resolves `require("std.*")` **relative
   to the CWD** (`./std/*.egg`), so `omelette run` finds the stdlib only when run from the repo. A
   proper install (LuaRocks / the single-file amalgam) needs the stdlib bundled or on a resolvable
