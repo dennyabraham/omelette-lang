@@ -26,3 +26,6 @@ guide can't drift from the language.
 ## Develop
 
 Run the tests: `luajit spec/run.lua`.
+
+Build and preview the site (landing, guide, playground): `lua site/build.lua
+--serve`. See `site/README.md` for details.
