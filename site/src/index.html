@@ -6,7 +6,7 @@
 <article>
 <div class="hero">
   <h1>Omelette</h1>
-  <p>A small, immutable, ML-flavored language that compiles to readable Lua 5.1.</p>
+  <p>A small ML that compiles to plain Lua 5.1. Values are immutable; the output reads like hand-written Lua.</p>
   <p><a class="button" href="guide.html">Read the guide</a><a class="button" href="play.html">Try it in your browser</a></p>
 </div>
 <pre><code>type Shape = | Circle { radius } | Rect { width, height } | Origin
@@ -20,10 +20,10 @@ let area s =
 print(area(Circle { radius = 2 }))   -- 12</code></pre>
 <h2>Why Omelette</h2>
 <ul>
-  <li>Compiles to clean, readable Lua 5.1 (LuaJIT / Neovim / any Lua host).</li>
+  <li>Compiles to plain Lua 5.1 — runs on LuaJIT, Neovim, any Lua host.</li>
   <li>Immutable values, pattern matching, sum types, comprehensions, pipes.</li>
-  <li>Optional types with exhaustiveness checking — opt-in, erased at runtime.</li>
-  <li>Every example in the guide is compiled and run in CI, so the docs can't drift.</li>
+  <li>Optional types with exhaustiveness checks. Opt in; erased at runtime.</li>
+  <li>Every guide example is compiled and run in CI, so the docs can't drift.</li>
 </ul>
 </article>
 </body></html>

@@ -1,19 +1,19 @@
 # The Omelette Guide
 
-Omelette is a small ML-flavored language that compiles to readable Lua 5.1. Every
-` ```egg ` example in this guide is compiled and run by the test suite (see
-`spec/doc_guide_spec.lua`), so what you read here is what actually happens.
+Omelette is a small ML that compiles to plain Lua 5.1. Every ` ```egg ` example
+below is compiled and run by the test suite (`spec/doc_guide_spec.lua`), so the
+guide can't drift from the language.
 
-Use the CLI to work with `.egg` files directly:
+Work with `.egg` files through the CLI:
 
 - `omelette run file.egg` — compile and execute.
-- `omelette build file.egg` — compile to Lua and print (or write) the output.
-- `omelette check file.egg` — run the type checker and report diagnostics.
+- `omelette build file.egg` — compile to Lua and print or write it.
+- `omelette check file.egg` — type-check and report diagnostics.
 
 ## Values and bindings
 
-`let` binds a name to a value. Bindings are immutable — once bound, a name can't
-be reassigned. `pub let` exports the binding from the module.
+`let` binds a name to a value. Names are immutable; once bound, a name can't be
+reassigned. `pub let` exports the binding from its module.
 
 ```egg
 let name = "Ada"
@@ -26,9 +26,9 @@ Hello, Ada
 
 ## Functions and partial application
 
-Function headers use juxtaposition for parameters — no `fn`/`function` keyword,
-no commas. Calls use parens. An `_` hole in a call leaves that argument open,
-producing a partially-applied function.
+Parameters follow the name by juxtaposition — no `fn` keyword, no commas. Calls
+take parens. An `_` hole leaves that argument open and yields a partially
+applied function.
 
 ```egg
 let add x y = x + y
@@ -41,8 +41,7 @@ print(inc(4))
 
 ## Pipes
 
-`|>` threads its left-hand side in as the first argument of the call on its
-right.
+`|>` feeds its left side as the first argument of the call on its right.
 
 ```egg
 let list = require("std.list")
@@ -54,8 +53,7 @@ print([1, 2, 3] |> list.sum)
 
 ## Control flow
 
-`if`/`then`/`else` is an expression, not a statement — it always produces a
-value.
+`if`/`then`/`else` is an expression, not a statement. It always yields a value.
 
 ```egg
 print(if 3 > 2 then "yes" else "no")
@@ -66,8 +64,8 @@ yes
 
 ## Pattern matching
 
-`match` dispatches on a value's shape: literals, variable binds, array
-`[a, b]` patterns, record `{ x, y }` patterns, and `when` guards.
+`match` dispatches on a value's shape: literals, variable binds, array patterns
+`[a, b]`, record patterns `{ x, y }`, and `when` guards.
 
 ```egg
 let describe pt =
@@ -97,8 +95,8 @@ print(sum_first_two([3, 4]))
 
 ## Comprehensions and ranges
 
-`[a to b]` builds an inclusive range. List comprehensions have the shape
-`[ f(x) | x <- xs ]`, and dict comprehensions `{ k => v | k, v <- d }`.
+`[a to b]` builds an inclusive range. List comprehensions read
+`[ f(x) | x <- xs ]`; dict comprehensions, `{ k => v | k, v <- d }`.
 
 ```egg
 let list = require("std.list")
@@ -118,7 +116,7 @@ print(list.sum([ x | x <- [1 to 10], x > 5 ]))
 40
 ```
 
-Dict comprehensions build a new table from `key, value` pairs:
+A dict comprehension builds a table from `key, value` pairs:
 
 ```egg
 let doubled = { k => v * 2 | k, v <- { a = 1, b = 2 } }
@@ -130,9 +128,9 @@ print(doubled.a + doubled.b)
 
 ## Sum types
 
-`type` declares a tagged union of constructors, each with an optional
-record of fields. Construct a value with `Ctor { field = v }`; match on it
-with a constructor pattern.
+`type` declares a tagged union of constructors, each with an optional record of
+fields. Build a value with `Ctor { field = v }`; match it with a constructor
+pattern.
 
 ```egg
 type Option = | Some { value } | None
@@ -143,7 +141,7 @@ print(unwrap(Some { value = 42 }, 0))
 42
 ```
 
-Constructors can be nullary, and `match` dispatches on the tag:
+Constructors can be nullary; `match` dispatches on the tag:
 
 ```egg
 type Shape = | Circle { radius } | Rect { width, height } | Origin
@@ -160,8 +158,8 @@ print(area(Circle { radius = 2 }) + area(Origin))
 
 ## Optional typing and exhaustiveness
 
-Annotate values and function signatures with `:`. Annotations are checked by
-`omelette check` but erased from the compiled Lua.
+Annotate values and signatures with `:`. `omelette check` checks the
+annotations; the compiled Lua erases them.
 
 ```egg
 let add (x: number) (y: number): number = x + y
@@ -180,8 +178,8 @@ let x: number = "hi"
 number
 ```
 
-For a value of a declared sum type, `match` must cover every constructor —
-missing one is a checker error naming the missing constructor:
+On a declared sum type, `match` must cover every constructor. Miss one and the
+checker names it:
 
 ```egg
 type Shape = | Circle { radius } | Origin
@@ -194,8 +192,8 @@ non-exhaustive match on 'Shape': missing Origin
 ## Standard library tour
 
 `require` loads a stdlib module by dotted path. `std.list`, `std.string`, and
-`std.table` cover the common collection-first, immutable operations —
-`list.map(xs, f)`, `list.sum(xs)`, and friends take the collection first.
+`std.table` hold the common immutable operations. Each takes its collection
+first: `list.map(xs, f)`, `list.sum(xs)`.
 
 ```egg
 let list = require("std.list")
@@ -211,9 +209,9 @@ HI
 2
 ```
 
-`std.list` also has `map`, `filter`, `reduce`, `reverse`, `sort`, `find`,
-`take`/`drop`, and more; `std.string` has `split`, `join`, `trim`,
-`starts_with`/`ends_with`; `std.table` has `keys`, `values`, `has`, `merge`.
+`std.list` also has `map`, `filter`, `reduce`, `reverse`, `sort`, `find`, and
+`take`/`drop`; `std.string` has `split`, `join`, `trim`, and
+`starts_with`/`ends_with`; `std.table` has `keys`, `values`, `has`, and `merge`.
 
 ```egg
 let list = require("std.list")
@@ -226,10 +224,9 @@ print(list.sum(evens))
 
 ## Lua interop
 
-Omelette code can call Lua globals directly — `print`, `string.*`,
-`table.*`, and anything else in scope — since it compiles straight to Lua.
-`lua "..."` splices raw Lua source in as an expression when you need an
-escape hatch.
+Omelette compiles straight to Lua, so it calls Lua globals directly: `print`,
+`string.*`, `table.*`, anything in scope. `lua "..."` splices raw Lua source as
+an expression when you need an escape hatch.
 
 ```egg
 print(string.upper("interop"))
