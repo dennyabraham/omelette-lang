@@ -134,7 +134,10 @@ pattern.
 
 ```egg
 type Option = | Some { value } | None
-let unwrap opt fallback = match opt with | Some { value } -> value | None -> fallback
+let unwrap opt fallback =
+  match opt with
+  | Some { value } -> value
+  | None           -> fallback
 print(unwrap(Some { value = 42 }, 0))
 ```
 ```output
