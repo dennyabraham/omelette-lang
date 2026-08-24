@@ -9,7 +9,7 @@
   <p>A small ML that compiles to plain Lua 5.1. Values are immutable; the output reads like hand-written Lua.</p>
   <p><a class="button" href="guide.html">Read the guide</a><a class="button" href="play.html">Try it in your browser</a></p>
 </div>
-<pre><code>type Shape = | Circle { radius } | Rect { width, height } | Origin
+<pre><code class="language-egg">type Shape = | Circle { radius } | Rect { width, height } | Origin
 
 let area s =
   match s with
@@ -26,4 +26,6 @@ print(area(Circle { radius = 2 }))   -- 12</code></pre>
   <li>Every guide example is compiled and run in CI, so the docs can't drift.</li>
 </ul>
 </article>
+<script src="prism.js"></script>
+<script src="prism-omelette.js"></script>
 </body></html>
