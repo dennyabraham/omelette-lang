@@ -2,6 +2,10 @@
 
 All notable changes to Omelette are documented here (Keep a Changelog format).
 
+## [0.1.1]
+Maintenance release — no language changes since 0.1.0.
+- Version bump so the first LuaRocks-published release can be cut once the repository is public and `LUAROCKS_API_KEY` is set (the v0.1.0 GitHub Release was published while private, so it did not reach LuaRocks).
+
 ## [0.1.0]
 Initial release of Omelette — a small ML-family language that transpiles to readable Lua 5.1.
 
