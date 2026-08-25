@@ -3,6 +3,15 @@ on:
   push:
     tags:
       - "v*"
+  # Callable by the auto-tag workflow (tag-on-version-bump.yml) via `uses:`, which
+  # passes the tag explicitly. Calling directly (same run) sidesteps GitHub's rule
+  # that a tag pushed by the default token cannot trigger the push-tags event above.
+  workflow_call:
+    inputs:
+      tag:
+        description: "Tag to release, e.g. v0.1.2 (defaults to the pushed tag)"
+        required: true
+        type: string
 
 jobs:
   release:
@@ -11,6 +20,8 @@ jobs:
       contents: write
     env:
       HAS_ROCKS_KEY: ${{ secrets.LUAROCKS_API_KEY != '' }}
+      # The tag to release: the workflow_call input, else the pushed tag ref.
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -20,7 +31,7 @@ jobs:
           luaVersion: "luajit"
       - uses: leafo/gh-actions-luarocks@v4
       - name: Validate tag matches init.lua version
-        run: lua scripts/check-version.lua "${GITHUB_REF_NAME}"
+        run: lua scripts/check-version.lua "${TAG}"
       - name: Run test suite
         run: lua spec/run.lua
       - name: Build single-file omelette
@@ -31,16 +42,17 @@ jobs:
       - name: Smoke-test the artifact
         run: lua dist/omelette build spec/fixtures/hello.egg | grep -q "M.greet = greet"
       - name: Extract release notes
-        run: lua scripts/changelog.lua "${GITHUB_REF_NAME#v}" < CHANGELOG.md > RELEASE_NOTES.md
+        run: lua scripts/changelog.lua "${TAG#v}" < CHANGELOG.md > RELEASE_NOTES.md
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG }}
           body_path: RELEASE_NOTES.md
           files: dist/omelette
       - name: Publish to LuaRocks
         if: ${{ env.HAS_ROCKS_KEY == 'true' && github.event.repository.private == false }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          sed -e "s/@VERSION@/${VERSION}/g" -e "s/@TAG@/${GITHUB_REF_NAME}/g" \
+          VERSION="${TAG#v}"
+          sed -e "s/@VERSION@/${VERSION}/g" -e "s/@TAG@/${TAG}/g" \
             rockspecs/omelette.rockspec.template > "omelette-${VERSION}-1.rockspec"
           luarocks upload "omelette-${VERSION}-1.rockspec" --api-key="${{ secrets.LUAROCKS_API_KEY }}"
