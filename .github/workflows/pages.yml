@@ -1,14 +1,23 @@
-name: Pages (manual)
-# Manual only — the site is NOT auto-published. Publishing also requires enabling
-# GitHub Pages in repo settings (kept OFF until the site is reviewed + the prose
-# is rewritten). This job only builds and uploads the artifact when dispatched.
+name: Pages
+# Builds site/dist and deploys it to GitHub Pages on every push to canon (and on
+# demand). Requires Pages enabled in repo settings with source = GitHub Actions.
+# The site is assembled from both site/ and docs/guide.md, so we rebuild on any
+# canon push rather than a path filter that could miss a guide edit.
 on:
+  push:
+    branches: [canon]
   workflow_dispatch:
+
+# One deploy at a time; a newer push supersedes an in-progress run.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 permissions:
   contents: read
-  # NB: no `pages: write` / `id-token: write` — those are DEPLOY permissions. This
-  # job only builds + uploads an artifact; it cannot publish. The future deploy PR
-  # adds them back alongside the deploy step, so the escalation is visible in review.
+  pages: write       # deploy permission
+  id-token: write    # deploy permission (OIDC for actions/deploy-pages)
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,3 +31,13 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
