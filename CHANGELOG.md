@@ -2,6 +2,10 @@
 
 All notable changes to Omelette are documented here (Keep a Changelog format).
 
+## [0.1.2]
+Maintenance release — no language changes since 0.1.1.
+- CI: releases are now cut automatically when `omelette/init.lua`'s version changes (auto-tag → release), alongside the existing manual-tag path.
+
 ## [0.1.1]
 Maintenance release — no language changes since 0.1.0.
 - Version bump so the first LuaRocks-published release can be cut once the repository is public and `LUAROCKS_API_KEY` is set (the v0.1.0 GitHub Release was published while private, so it did not reach LuaRocks).
