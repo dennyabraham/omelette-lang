@@ -16,9 +16,9 @@ with Omelette's thesis (a small, optional/erased, *readable-Lua* ML).
 
 ## Now / Next — language deepening (in-grain, harvestable)
 
-The highest-leverage, best-fit growth, much of it surfaced by comparing against Amulet.
-These are syntax + codegen + checker work — no type-theory — so they extend the language
-without changing its erased, readable-output character.
+The highest-leverage, best-fit growth, much of it surfaced by comparing against Amulet and
+OCaml. These are syntax + codegen + checker work — no type-theory — so they extend the
+language without changing its erased, readable-output character.
 
 - **Positional constructors + tuples** — _Value: High · Effort: Medium · Fit: Great._
   Today every variant is a record: `Some { value = 3 }`, `Cons { head = x, tail = xs }`.
@@ -27,7 +27,19 @@ without changing its erased, readable-output character.
   ergonomic gap vs. other ML→Lua languages. Work: extend the `{ __tag }` runtime rep with
   positional fields (e.g. `{ __tag = "Some", 3 }`), the constructor-pattern binder, and the
   exhaustiveness checker; keep named-field constructors alongside (they stay nice for
-  record-shaped variants). _Source: Amulet comparison; sum-types designs ("positional-field constructors")._
+  record-shaped variants). _Source: Amulet + OCaml comparison (`Foo of a * b`); sum-types designs ("positional-field constructors")._
+
+- **Functional record update** — `{ r with radius = 5 }` — _Value: High · Effort: Low · Fit: Great._
+  Omelette is immutable-by-default but has no ergonomic way to change one field — today you
+  rebuild the whole record by hand. OCaml's `{ r with field = v }` is the immutable-language
+  answer. Work: codegen a shallow table copy plus the field overrides (an IIFE or a small
+  runtime helper); a new `with`-in-record-literal parse form. _Source: OCaml comparison._
+
+- **Destructuring `let` bindings** — `let { radius } = circle`, `let (a, b) = pair` —
+  _Value: Medium · Effort: Low · Fit: Great._
+  Destructuring works in `match` patterns but not in `let` today. Reuse the existing pattern
+  machinery on the binding's left-hand side (record pun/rename, array, and — with the item
+  above — tuple patterns). _Source: OCaml comparison; reuses the pattern-matching engine._
 
 - **Pattern-matching extras** — _Value: Medium · Effort: Low · Fit: Great._
   Each is a small parser/codegen change that makes `match` markedly more expressive:
