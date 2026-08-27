@@ -93,6 +93,20 @@ print(sum_first_two([3, 4]))
 7
 ```
 
+Number patterns can be negative:
+
+```egg
+let sign n =
+  match n with
+  | -1 -> "neg one"
+  | 0  -> "zero"
+  | _  -> "other"
+print(sign(-1))
+```
+```output
+neg one
+```
+
 ## Comprehensions and ranges
 
 `[a to b]` builds an inclusive range. List comprehensions read

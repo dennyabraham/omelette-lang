@@ -1,0 +1,31 @@
+local h = require("spec.support.harness")
+local compiler = require("omelette.compiler")
+
+local function val(src, name)
+  local mod = assert(compiler.eval(src))
+  return mod[name]
+end
+
+h.describe("negative-number literal patterns", function()
+  h.it("matches a negative integer literal", function()
+    h.eq(val('pub let r = match -1 with | -1 -> "a" | _ -> "b"', "r"), "a")
+  end)
+  h.it("does not match a different value", function()
+    h.eq(val('pub let r = match 1 with | -1 -> "a" | _ -> "b"', "r"), "b")
+  end)
+  h.it("matches a negative float literal", function()
+    h.eq(val('pub let r = match -1.5 with | -1.5 -> "a" | _ -> "b"', "r"), "a")
+  end)
+  h.it("works nested in an array pattern", function()
+    h.eq(val("pub let r = match [3, -1] with | [a, -1] -> a | _ -> 0", "r"), 3)
+  end)
+  h.it("a '-' before a non-number still fails to parse", function()
+    local ok = compiler.compile("pub let f = match 0 with | -y -> y | _ -> 0")
+    h.truthy(not ok)
+  end)
+  h.it("the emitted Lua loads", function()
+    local lua = assert(compiler.compile('pub let r = match -1 with | -1 -> 1 | _ -> 0'))
+    local load_fn = loadstring or load
+    h.truthy((load_fn(lua)))
+  end)
+end)
