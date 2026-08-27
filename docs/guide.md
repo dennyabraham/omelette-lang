@@ -79,6 +79,16 @@ print(describe({ x = 1, y = 1 }))
 diagonal
 ```
 
+Copy a record with some fields changed — the original is untouched:
+
+```egg
+let p = { x = 1, y = 2 }
+print({ p with y = 9 }.y)
+```
+```output
+9
+```
+
 Array patterns discriminate by length:
 
 ```egg
