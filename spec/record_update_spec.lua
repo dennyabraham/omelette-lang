@@ -1,0 +1,46 @@
+local h = require("spec.support.harness")
+local compiler = require("omelette.compiler")
+local function eval(src) return assert(compiler.eval(src)) end
+
+h.describe("functional record update", function()
+  h.it("overrides a single field, leaves others", function()
+    local m = eval("pub let base = { a = 1, b = 2 }\npub let out = { base with a = 9 }")
+    h.eq(m.out.a, 9); h.eq(m.out.b, 2)
+  end)
+  h.it("leaves the original unchanged", function()
+    local m = eval("pub let base = { a = 1, b = 2 }\npub let out = { base with a = 9 }")
+    h.eq(m.base.a, 1)
+  end)
+  h.it("overrides multiple fields in order", function()
+    local m = eval("pub let base = { a = 1, b = 2, c = 3 }\npub let out = { base with a = 9, c = 7 }")
+    h.eq(m.out.a, 9); h.eq(m.out.b, 2); h.eq(m.out.c, 7)
+  end)
+  h.it("an override may reference the original", function()
+    local m = eval("pub let pt = { x = 4 }\npub let out = { pt with x = pt.x + 1 }")
+    h.eq(m.out.x, 5)
+  end)
+  h.it("updating a sum-type value preserves its tag", function()
+    local m = eval([[
+type Shape = | Circle { radius } | Origin
+pub let c = Circle { radius = 3 }
+pub let c2 = { c with radius = 9 }
+pub let area = match c2 with | Circle { radius } -> radius * radius | Origin -> 0
+]])
+    h.eq(m.area, 81)
+    h.eq(m.c2.__tag, "Circle")
+  end)
+  h.it("evaluates the base exactly once", function()
+    local lua = assert(compiler.compile("pub let out = { mybaseident with x = 1 }"))
+    local _, n = lua:gsub("mybaseident", "")
+    h.eq(n, 1)
+  end)
+  h.it("a record-update literal composes as a field base", function()
+    local m = eval("pub let base = { a = 1 }\npub let x = { base with a = 5 }.a")
+    h.eq(m.x, 5)
+  end)
+  h.it("the emitted Lua loads", function()
+    local lua = assert(compiler.compile("pub let out = { { a = 1 } with a = 2 }"))
+    local load_fn = loadstring or load
+    h.truthy((load_fn(lua)))
+  end)
+end)

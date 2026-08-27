@@ -19,7 +19,7 @@ local gen_local_let, gen_fn_body  -- forward declarations for statement helpers
 -- without parens: `{..}[k]`, `{..}.f`, `"s".f`, `(fn..)(x)` are all syntax errors in
 -- Lua 5.1. Wrap those bases in parens; everything else (ident/field/index/call results,
 -- self-parenthesizing binops/unops) is already a valid prefix.
-local PREFIX_NEEDS_PAREN = { array = true, table = true, string = true, lambda = true, construct = true }
+local PREFIX_NEEDS_PAREN = { array = true, table = true, string = true, lambda = true, construct = true, record_update = true }
 local function prefix(node, ctx)
   local code = expr(node, ctx)
   if PREFIX_NEEDS_PAREN[node.kind] then return "(" .. code .. ")" end
@@ -205,6 +205,22 @@ local function gen_match(node, ctx)
   return table.concat(lines, "\n")
 end
 
+-- { base with f = v, … } → copy the base (shallow) and override fields, via an inline IIFE
+-- (no runtime helper injected). The base is emitted once, as the IIFE argument.
+local function gen_record_update(node, ctx)
+  local lines = {
+    "(function(__base)",
+    "  local __new = {}",
+    "  for __k, __v in pairs(__base) do __new[__k] = __v end",
+  }
+  for _, f in ipairs(node.fields) do
+    lines[#lines + 1] = "  __new." .. f.key .. " = " .. expr(f.value, ctx)
+  end
+  lines[#lines + 1] = "  return __new"
+  lines[#lines + 1] = "end)(" .. expr(node.base, ctx) .. ")"
+  return table.concat(lines, "\n")
+end
+
 expr = function(node, ctx)
   local k = node.kind
   if k == "number" then return tostring(node.value) end
@@ -257,6 +273,7 @@ expr = function(node, ctx)
   end
   if k == "if" then return gen_if(node, ctx) end
   if k == "match" then return gen_match(node, ctx) end
+  if k == "record_update" then return gen_record_update(node, ctx) end
   error("codegen: cannot emit expression of kind '" .. tostring(k) .. "'")
 end
 
