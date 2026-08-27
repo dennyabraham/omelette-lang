@@ -403,6 +403,13 @@ end
 
 function Parser:parse_pattern()
   if self:at("punct", "_") then self:next(); return { kind = "wildcard" } end
+  -- negative number literal: `-` directly followed by a number token → negated numeric lit.
+  -- (Only a numeric follower triggers this; `-x` stays an error, unchanged.)
+  if self:at("op", "-") and self:peek2() and self:peek2().type == "number" then
+    self:next()                 -- consume '-'
+    local num = self:next()     -- the number token (num.value is a Lua number)
+    return { kind = "lit", value = -num.value, lit_kind = "number" }
+  end
   if self:at("punct", "[") then
     self:next()
     local elems = {}
