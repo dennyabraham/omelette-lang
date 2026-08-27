@@ -234,14 +234,26 @@ function Parser:parse_primary()
       self:expect("punct", "}")
       return { kind = "table", fields = fields, line = t.line, col = t.col }
     end
-    -- dict comprehension: `key => value | quals`
-    local key = self:parse_expr()
+    -- functional record update `expr with f = v, …`, or dict comprehension `key => value | quals`
+    local head = self:parse_expr()
+    if self:at("keyword", "with") then
+      self:next()  -- consume `with`
+      local fields = {}
+      repeat
+        local key = self:expect("ident").value
+        self:expect("op", "=")
+        local value = self:parse_expr()
+        fields[#fields + 1] = { key = key, value = value }
+      until not self:accept_comma()
+      self:expect("punct", "}")
+      return { kind = "record_update", base = head, fields = fields, line = t.line, col = t.col }
+    end
     self:expect("op", "=>")
     local value = self:parse_expr()
     self:expect("punct", "|")
     local quals = self:parse_qualifiers()
     self:expect("punct", "}")
-    return { kind = "dict_comprehension", key = key, value = value, quals = quals, line = t.line, col = t.col }
+    return { kind = "dict_comprehension", key = head, value = value, quals = quals, line = t.line, col = t.col }
   end
   self:fail("unexpected token '" .. tostring(t.value) .. "'")
 end
