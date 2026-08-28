@@ -203,6 +203,20 @@ print(area(Circle { radius = 2 }) + area(Origin))
 12
 ```
 
+Constructors can take positional arguments instead of named fields:
+
+```egg
+type Option = Some(a) | None
+let unwrap o fallback =
+  match o with
+  | Some(x) -> x
+  | None    -> fallback
+print(unwrap(Some(7), 0))
+```
+```output
+7
+```
+
 ## Optional typing and exhaustiveness
 
 Annotate values and signatures with `:`. `omelette check` checks the
