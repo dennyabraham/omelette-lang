@@ -58,7 +58,9 @@ local function collect_pattern_vars(pat, out)
   if k == "var" then out[#out + 1] = pat.name
   elseif k == "array_pat" then for _, p in ipairs(pat.elems) do collect_pattern_vars(p, out) end
   elseif k == "record_pat" then for _, f in ipairs(pat.fields) do collect_pattern_vars(f.pat, out) end
-  elseif k == "ctor_pat" then for _, f in ipairs(pat.fields) do collect_pattern_vars(f.pat, out) end
+  elseif k == "ctor_pat" then
+    if pat.positional then for _, p in ipairs(pat.args) do collect_pattern_vars(p, out) end
+    else for _, f in ipairs(pat.fields) do collect_pattern_vars(f.pat, out) end end
   end
 end
 
@@ -103,10 +105,14 @@ function Checker:build_registry(program)
           end
         end
         entry.ctors[#entry.ctors + 1] = v.name
-        entry.fields[v.name] = v.fields
-        local fieldset = {}
-        for _, f in ipairs(v.fields) do fieldset[f] = true end
-        self.ctor_owner[v.name] = { type = node.name, fields = v.fields, fieldset = fieldset }
+        if v.positional then
+          self.ctor_owner[v.name] = { type = node.name, positional = true, arity = v.arity }
+        else
+          entry.fields[v.name] = v.fields
+          local fieldset = {}
+          for _, f in ipairs(v.fields) do fieldset[f] = true end
+          self.ctor_owner[v.name] = { type = node.name, fields = v.fields, fieldset = fieldset }
+        end
       end
     end
   end
@@ -118,15 +124,31 @@ function Checker:validate_pattern(pat, at)
   local k = pat.kind
   if k == "ctor_pat" then
     local owner = self.ctor_owner[pat.tag]
-    if owner then
-      for _, f in ipairs(pat.fields) do
-        if not owner.fieldset[f.key] then
-          self:err("unknown field '" .. f.key .. "' in pattern for constructor '" .. pat.tag
-            .. "' (fields: " .. table.concat(owner.fields, ", ") .. ")", at)
+    if pat.positional then
+      if owner then
+        if not owner.positional then
+          self:err("constructor '" .. pat.tag .. "' takes named fields, not positional arguments", at)
+        elseif #pat.args ~= owner.arity then
+          self:err("constructor '" .. pat.tag .. "' expects " .. owner.arity
+            .. " argument" .. (owner.arity == 1 and "" or "s") .. ", got " .. #pat.args, at)
         end
       end
+      for _, p in ipairs(pat.args) do self:validate_pattern(p, at) end
+    else
+      if owner then
+        if owner.positional then
+          self:err("constructor '" .. pat.tag .. "' takes positional arguments, not named fields", at)
+        else
+          for _, f in ipairs(pat.fields) do
+            if not owner.fieldset[f.key] then
+              self:err("unknown field '" .. f.key .. "' in pattern for constructor '" .. pat.tag
+                .. "' (fields: " .. table.concat(owner.fields, ", ") .. ")", at)
+            end
+          end
+        end
+      end
+      for _, f in ipairs(pat.fields) do self:validate_pattern(f.pat, at) end
     end
-    for _, f in ipairs(pat.fields) do self:validate_pattern(f.pat, at) end
   elseif k == "array_pat" then
     for _, p in ipairs(pat.elems) do self:validate_pattern(p, at) end
   elseif k == "record_pat" then
@@ -249,20 +271,37 @@ function Checker:synth(node, env)
   if k == "array" then for _, it in ipairs(node.items) do self:synth(it, env) end; return ANY end
   if k == "table" then for _, f in ipairs(node.fields) do self:synth(f.value, env) end; return ANY end
   if k == "construct" then
+    if node.positional then
+      for _, a in ipairs(node.args) do self:synth(a, env) end
+      local owner = self.ctor_owner and self.ctor_owner[node.tag]
+      if owner then
+        if not owner.positional then
+          self:err("constructor '" .. node.tag .. "' takes named fields, not positional arguments", node)
+        elseif #node.args ~= owner.arity then
+          self:err("constructor '" .. node.tag .. "' expects " .. owner.arity
+            .. " argument" .. (owner.arity == 1 and "" or "s") .. ", got " .. #node.args, node)
+        end
+      end
+      return ANY
+    end
     for _, f in ipairs(node.fields) do self:synth(f.value, env) end
     local owner = self.ctor_owner and self.ctor_owner[node.tag]
     if owner then
-      local provided = {}
-      for _, f in ipairs(node.fields) do
-        provided[f.key] = true
-        if not owner.fieldset[f.key] then
-          self:err("unknown field '" .. f.key .. "' for constructor '" .. node.tag
-            .. "' (fields: " .. table.concat(owner.fields, ", ") .. ")", node)
+      if owner.positional then
+        self:err("constructor '" .. node.tag .. "' takes positional arguments, not named fields", node)
+      else
+        local provided = {}
+        for _, f in ipairs(node.fields) do
+          provided[f.key] = true
+          if not owner.fieldset[f.key] then
+            self:err("unknown field '" .. f.key .. "' for constructor '" .. node.tag
+              .. "' (fields: " .. table.concat(owner.fields, ", ") .. ")", node)
+          end
         end
-      end
-      for _, fname in ipairs(owner.fields) do
-        if not provided[fname] then
-          self:err("missing field '" .. fname .. "' for constructor '" .. node.tag .. "'", node)
+        for _, fname in ipairs(owner.fields) do
+          if not provided[fname] then
+            self:err("missing field '" .. fname .. "' for constructor '" .. node.tag .. "'", node)
+          end
         end
       end
     end
