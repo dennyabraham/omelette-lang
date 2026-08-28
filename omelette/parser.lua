@@ -309,11 +309,33 @@ function Parser:parse_type()
   return { kind = "type_name", name = id.value }
 end
 
+-- a let pattern must always match; literal and constructor patterns are refutable.
+function Parser:check_irrefutable(pat)
+  local k = pat.kind
+  if k == "lit" or k == "ctor_pat" then
+    self:fail("a let pattern must always match; use 'match' for constructor/literal patterns")
+  elseif k == "record_pat" then
+    for _, f in ipairs(pat.fields) do self:check_irrefutable(f.pat) end
+  elseif k == "array_pat" then
+    for _, e in ipairs(pat.elems) do self:check_irrefutable(e) end
+  end
+end
+
 function Parser:parse_let()
   local is_pub = false
   local startt = self:peek()
   if self:at("keyword", "pub") then is_pub = true; self:next() end
   self:expect("keyword", "let")
+  -- destructuring binding: `let <pattern> = value` (LHS begins with { [ or ( — a plain
+  -- value/function binding always begins with an identifier, so this is unambiguous)
+  if self:at("punct", "{") or self:at("punct", "[") or self:at("punct", "(") then
+    local pattern = self:parse_pattern()
+    self:check_irrefutable(pattern)
+    self:expect("op", "=")
+    local value = self:parse_block_or_expr()
+    return { kind = "let", pattern = pattern, value = value,
+             is_pub = is_pub, line = startt.line, col = startt.col }
+  end
   local name = self:expect("ident").value
   -- params: bare `ident` (untyped -> false) or parenthesized `(ident: type)`
   local params, param_types = nil, nil
