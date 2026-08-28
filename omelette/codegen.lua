@@ -34,11 +34,6 @@ end
 
 -- a call whose args contain holes becomes a wrapping closure
 local function gen_call(node, ctx)
-  if node.fn.kind == "construct" then
-    -- `Some(x)` (reflexive ML call syntax) — constructors use named-field braces
-    error("constructor '" .. node.fn.tag .. "' is built with braces, not call syntax: "
-      .. "write " .. node.fn.tag .. " { field = ... }, not " .. node.fn.tag .. "(...)")
-  end
   local has_hole = false
   for _, a in ipairs(node.args) do if a.kind == "hole" then has_hole = true break end end
   if not has_hole then
@@ -155,8 +150,14 @@ local function compile_pattern(pat, access, ctx, tests, binds)
   elseif k == "ctor_pat" then
     tests[#tests + 1] = "type(" .. access .. ') == "table"'
     tests[#tests + 1] = access .. ".__tag == " .. quote_string(pat.tag)
-    for _, f in ipairs(pat.fields) do
-      compile_pattern(f.pat, access .. "." .. f.key, ctx, tests, binds)
+    if pat.positional then
+      for i, sub in ipairs(pat.args) do
+        compile_pattern(sub, access .. "[" .. i .. "]", ctx, tests, binds)
+      end
+    else
+      for _, f in ipairs(pat.fields) do
+        compile_pattern(f.pat, access .. "." .. f.key, ctx, tests, binds)
+      end
     end
   end
 end
@@ -263,11 +264,15 @@ expr = function(node, ctx)
   end
   if k == "construct" then
     local parts = { "__tag = " .. quote_string(node.tag) }
-    for _, f in ipairs(node.fields) do
-      if f.key == "__tag" then
-        error("field name '__tag' is reserved (it holds the constructor discriminant)")
+    if node.positional then
+      for _, a in ipairs(node.args) do parts[#parts + 1] = expr(a, ctx) end
+    else
+      for _, f in ipairs(node.fields) do
+        if f.key == "__tag" then
+          error("field name '__tag' is reserved (it holds the constructor discriminant)")
+        end
+        parts[#parts + 1] = f.key .. " = " .. expr(f.value, ctx)
       end
-      parts[#parts + 1] = f.key .. " = " .. expr(f.value, ctx)
     end
     return "{ " .. table.concat(parts, ", ") .. " }"
   end

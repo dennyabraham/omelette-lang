@@ -82,14 +82,6 @@ h.describe("sum type codegen", function()
     local mod = assert(compiler.eval('pub let x = Some { value = 7 }["value"]'))
     h.eq(mod.x, 7)
   end)
-  h.it("call syntax on a constructor gives a friendly error", function()
-    local lua, err = compiler.compile(table.concat({
-      "pub type Option = Some { value } | None",
-      "pub let x = Some(5)"
-    }, "\n"))
-    h.truthy(lua == nil)
-    h.truthy(err ~= nil)
-  end)
   h.it("a __tag field in construction is rejected", function()
     local lua, err = compiler.compile("pub let x = Circle { __tag = 9 }")
     h.truthy(lua == nil)
