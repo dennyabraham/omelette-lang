@@ -103,6 +103,16 @@ print(sum_first_two([3, 4]))
 7
 ```
 
+Parentheses with commas make a tuple, matched positionally:
+
+```egg
+let minmax a b = if a < b then (a, b) else (b, a)
+print(match minmax(5, 2) with | (lo, hi) -> hi - lo)
+```
+```output
+3
+```
+
 Number patterns can be negative:
 
 ```egg

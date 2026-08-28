@@ -183,12 +183,19 @@ function Parser:parse_primary()
   end
   if self:at("punct", "(") then
     self:next()
-    -- parse_expr_or_form so a parenthesized form (match/if/fn) is usable as a
-    -- primary, hence in ANY expression position: (match … ) |> f, [ (match …) | … ],
-    -- match (match …) with …, 1 + (if c then a else b), etc.
-    local e = self:parse_expr_or_form()
+    -- parse_expr_or_form so a parenthesized form (match/if/fn) is usable as a primary.
+    local first = self:parse_expr_or_form()
+    if self:at("punct", ",") then
+      -- tuple: fixed-arity array sugar `(e1, e2, …)`
+      local items = { first }
+      while self:accept_comma() do
+        items[#items + 1] = self:parse_expr()
+      end
+      self:expect("punct", ")")
+      return { kind = "array", items = items, line = t.line, col = t.col }
+    end
     self:expect("punct", ")")
-    return e
+    return first
   end
   if self:at("punct", "[") then
     self:next()
@@ -429,6 +436,13 @@ function Parser:parse_pattern()
       repeat elems[#elems + 1] = self:parse_pattern() until not self:accept_comma()
     end
     self:expect("punct", "]")
+    return { kind = "array_pat", elems = elems }
+  end
+  if self:at("punct", "(") then
+    self:next()
+    local elems = {}
+    repeat elems[#elems + 1] = self:parse_pattern() until not self:accept_comma()
+    self:expect("punct", ")")
     return { kind = "array_pat", elems = elems }
   end
   if self:at("punct", "{") then
