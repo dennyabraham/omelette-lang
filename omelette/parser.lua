@@ -163,7 +163,16 @@ function Parser:parse_primary()
   if t.type == "ident" then
     self:next()
     if t.value:sub(1, 1):match("%u") then
-      -- uppercase ident = constructor: `Ctor { field = v }` or bare nullary `Ctor`
+      -- uppercase ident = constructor
+      if self:at("punct", "(") then
+        self:next()
+        local args = {}
+        if not self:at("punct", ")") then
+          repeat args[#args + 1] = self:parse_expr() until not self:accept_comma()
+        end
+        self:expect("punct", ")")
+        return { kind = "construct", tag = t.value, positional = true, args = args, line = t.line, col = t.col }
+      end
       local fields = {}
       if self:at("punct", "{") then
         self:next()
@@ -386,15 +395,25 @@ function Parser:parse_type_decl()
     if not cname.value:sub(1, 1):match("%u") then
       self:fail("constructor names must be capitalized")
     end
-    local vfields = {}
-    if self:at("punct", "{") then
+    if self:at("punct", "(") then
       self:next()
-      if not self:at("punct", "}") then
-        repeat vfields[#vfields + 1] = self:expect("ident").value until not self:accept_comma()
+      local arity = 0
+      if not self:at("punct", ")") then
+        repeat self:expect("ident"); arity = arity + 1 until not self:accept_comma()
       end
-      self:expect("punct", "}")
+      self:expect("punct", ")")
+      variants[#variants + 1] = { name = cname.value, positional = true, arity = arity }
+    else
+      local vfields = {}
+      if self:at("punct", "{") then
+        self:next()
+        if not self:at("punct", "}") then
+          repeat vfields[#vfields + 1] = self:expect("ident").value until not self:accept_comma()
+        end
+        self:expect("punct", "}")
+      end
+      variants[#variants + 1] = { name = cname.value, fields = vfields }
     end
-    variants[#variants + 1] = { name = cname.value, fields = vfields }
   until not (self:at("punct", "|") and self:next())
   return { kind = "type_decl", name = name, is_pub = is_pub, variants = variants,
            line = startt.line, col = startt.col }
@@ -489,7 +508,16 @@ function Parser:parse_pattern()
   end
   local id = self:expect("ident")
   if id.value:sub(1, 1):match("%u") then
-    -- uppercase = constructor pattern: `Ctor { field-pats }` or nullary `Ctor`
+    -- uppercase = constructor pattern
+    if self:at("punct", "(") then
+      self:next()
+      local args = {}
+      if not self:at("punct", ")") then
+        repeat args[#args + 1] = self:parse_pattern() until not self:accept_comma()
+      end
+      self:expect("punct", ")")
+      return { kind = "ctor_pat", tag = id.value, positional = true, args = args }
+    end
     local fields = {}
     if self:at("punct", "{") then
       self:next()
