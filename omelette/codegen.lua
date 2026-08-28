@@ -305,9 +305,56 @@ gen_value = function(target, node, ctx, pad)
   return pad .. target .. " = " .. M.expr(node, ctx)
 end
 
+-- collect the variable names a pattern binds (var leaves; wildcards bind nothing).
+local function pattern_names(pat, out)
+  out = out or {}
+  local k = pat.kind
+  if k == "var" then out[#out + 1] = pat.name
+  elseif k == "record_pat" then for _, f in ipairs(pat.fields) do pattern_names(f.pat, out) end
+  elseif k == "array_pat" then for _, e in ipairs(pat.elems) do pattern_names(e, out) end
+  end
+  return out
+end
+
+-- append `[local] <name> = <access>` lines binding a pattern's vars by direct extraction.
+local function destructure_into(pat, access, lines, pad, decl)
+  local k = pat.kind
+  if k == "var" then
+    lines[#lines + 1] = pad .. (decl and "local " or "") .. pat.name .. " = " .. access
+  elseif k == "record_pat" then
+    for _, f in ipairs(pat.fields) do destructure_into(f.pat, access .. "." .. f.key, lines, pad, decl) end
+  elseif k == "array_pat" then
+    for i, e in ipairs(pat.elems) do destructure_into(e, access .. "[" .. i .. "]", lines, pad, decl) end
+  end
+  -- wildcard: bind nothing
+end
+
+-- destructure `node.value` into `pattern`'s vars. The value is emitted once: directly if a
+-- bare identifier, via `gen_value` if if/match/block (statement-lowered), else one `__d` temp.
+-- `decl` = true emits `local` (block scope); false assigns forward-declared names (top level).
+local function gen_destructure(pattern, value, ctx, pad, decl)
+  local lines = {}
+  local base
+  if value.kind == "ident" then
+    base = value.name
+  elseif value.kind == "if" or value.kind == "match" or value.kind == "block" then
+    lines[#lines + 1] = pad .. "local __d"
+    lines[#lines + 1] = gen_value("__d", value, ctx, pad)
+    base = "__d"
+  else
+    lines[#lines + 1] = pad .. "local __d = " .. M.expr(value, ctx)
+    base = "__d"
+  end
+  destructure_into(pattern, base, lines, pad, decl)
+  return table.concat(lines, "\n")
+end
+
 -- a `let` used as a local statement (inside a block or at file scope, non-pub)
 gen_local_let = function(node, ctx, pad)
   pad = pad or ""
+  if node.pattern then
+    return gen_destructure(node.pattern, node.value, ctx, pad, true)
+  end
   if node.params then
     local body = gen_fn_body(node.value, ctx, pad .. "  ")
     return pad .. "local function " .. node.name .. "(" .. table.concat(node.params, ", ") .. ")\n"
@@ -344,6 +391,9 @@ end
 -- Used only at module top level, where all binding names are declared up front,
 -- so top-level functions can reference each other in any order.
 local function gen_top_assign(node, ctx)
+  if node.pattern then
+    return gen_destructure(node.pattern, node.value, ctx, "", false)
+  end
   if node.params then
     local body = gen_fn_body(node.value, ctx, "  ")
     return "function " .. node.name .. "(" .. table.concat(node.params, ", ") .. ")\n"
@@ -362,7 +412,13 @@ function M.program(program)
   -- each other (and recurse) regardless of definition order
   local names = {}
   for _, node in ipairs(program.stmts) do
-    if node.kind == "let" then names[#names + 1] = node.name end
+    if node.kind == "let" then
+      if node.pattern then
+        for _, nm in ipairs(pattern_names(node.pattern)) do names[#names + 1] = nm end
+      else
+        names[#names + 1] = node.name
+      end
+    end
   end
   if #names > 0 then
     lines[#lines + 1] = "local " .. table.concat(names, ", ")
@@ -376,7 +432,13 @@ function M.program(program)
     else
       lines[#lines + 1] = gen_top_assign(node, ctx)
       if node.is_pub then
-        lines[#lines + 1] = "M." .. node.name .. " = " .. node.name
+        if node.pattern then
+          for _, nm in ipairs(pattern_names(node.pattern)) do
+            lines[#lines + 1] = "M." .. nm .. " = " .. nm
+          end
+        else
+          lines[#lines + 1] = "M." .. node.name .. " = " .. node.name
+        end
       end
     end
   end

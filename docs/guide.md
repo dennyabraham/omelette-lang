@@ -89,6 +89,16 @@ print({ p with y = 9 }.y)
 9
 ```
 
+A `let` binding can destructure a record, array, or tuple directly:
+
+```egg
+let { x, y } = { x = 3, y = 4 }
+print(x * y)
+```
+```output
+12
+```
+
 Array patterns discriminate by length:
 
 ```egg
