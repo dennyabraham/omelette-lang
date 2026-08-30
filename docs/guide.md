@@ -99,6 +99,19 @@ print(x * y)
 12
 ```
 
+Arrays and tuples bind positionally:
+
+```egg
+let [first, second] = [10, 20]
+let (label, total)  = ("area", first * second)
+print(label)
+print(total)
+```
+```output
+area
+200
+```
+
 Array patterns discriminate by length:
 
 ```egg
@@ -172,9 +185,10 @@ print(doubled.a + doubled.b)
 
 ## Sum types
 
-`type` declares a tagged union of constructors, each with an optional record of
-fields. Build a value with `Ctor { field = v }`; match it with a constructor
-pattern.
+`type` declares a tagged union of constructors. A constructor carries either **named
+fields** — `Circle { radius }`, built with `Circle { radius = 5 }` — or **positional
+arguments** — `Some(a)`, built with `Some(3)` — or nothing at all (nullary). `match`
+dispatches on the constructor.
 
 ```egg
 type Option = | Some { value } | None
@@ -203,18 +217,18 @@ print(area(Circle { radius = 2 }) + area(Origin))
 12
 ```
 
-Constructors can take positional arguments instead of named fields:
+Positional constructors carry their payload by position — a natural fit for shapes like a tree:
 
 ```egg
-type Option = Some(a) | None
-let unwrap o fallback =
-  match o with
-  | Some(x) -> x
-  | None    -> fallback
-print(unwrap(Some(7), 0))
+type Tree = Leaf(n) | Node(l, r)
+let sum t =
+  match t with
+  | Leaf(n)    -> n
+  | Node(l, r) -> sum(l) + sum(r)
+print(sum(Node(Leaf(1), Node(Leaf(2), Leaf(3)))))
 ```
 ```output
-7
+6
 ```
 
 ## Optional typing and exhaustiveness
