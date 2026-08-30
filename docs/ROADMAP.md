@@ -5,47 +5,27 @@ The prioritized plan for what's next, and an honest record of what's intentional
 Each cycle's spec `Non-Goals` section remains the authoritative detail; this file is the
 map so nothing gets lost between cycles.
 
-_Last updated: 2026-08-26 — added the language-deepening track (positional constructors,
-tuples, pattern-matching extras) from the Amulet comparison; marked the site + syntax
-highlighting shipped; noted LuaRocks e2e/publish unblocked now that the repo is public._
+_Last updated: 2026-08-30 — shipped the language-deepening batch (functional record update,
+tuples, destructuring `let`, positional constructors, negative-literal patterns) and moved it
+to Shipped; only or-/as-patterns remain of that track._
 
 Legend: **Value** = user-visible payoff · **Effort** = build size · **Fit** = alignment
 with Omelette's thesis (a small, optional/erased, *readable-Lua* ML).
 
 ---
 
-## Now / Next — language deepening (in-grain, harvestable)
+## Now / Next — language deepening
 
-The highest-leverage, best-fit growth, much of it surfaced by comparing against Amulet and
-OCaml. These are syntax + codegen + checker work — no type-theory — so they extend the
-language without changing its erased, readable-output character.
+The highest-leverage growth, much of it surfaced by comparing against Amulet and OCaml. These
+are syntax + codegen + checker work — no type-theory — so they extend the language without
+changing its erased, readable-output character. (Five items shipped in 2026-08 — see Shipped;
+these are what remains.)
 
-- **Positional constructors + tuples** — _Value: High · Effort: Medium · Fit: Great._
-  Today every variant is a record: `Some { value = 3 }`, `Cons { head = x, tail = xs }`.
-  Add positional payloads — `type Option = Some(a) | None`, build `Some(3)`, match `Some(x)`
-  — and first-class tuples `(x, y)` with tuple patterns `(a, b)`. This closes the sharpest
-  ergonomic gap vs. other ML→Lua languages. Work: extend the `{ __tag }` runtime rep with
-  positional fields (e.g. `{ __tag = "Some", 3 }`), the constructor-pattern binder, and the
-  exhaustiveness checker; keep named-field constructors alongside (they stay nice for
-  record-shaped variants). _Source: Amulet + OCaml comparison (`Foo of a * b`); sum-types designs ("positional-field constructors")._
-
-- **Functional record update** — `{ r with radius = 5 }` — _Value: High · Effort: Low · Fit: Great._
-  Omelette is immutable-by-default but has no ergonomic way to change one field — today you
-  rebuild the whole record by hand. OCaml's `{ r with field = v }` is the immutable-language
-  answer. Work: codegen a shallow table copy plus the field overrides (an IIFE or a small
-  runtime helper); a new `with`-in-record-literal parse form. _Source: OCaml comparison._
-
-- **Destructuring `let` bindings** — `let { radius } = circle`, `let (a, b) = pair` —
-  _Value: Medium · Effort: Low · Fit: Great._
-  Destructuring works in `match` patterns but not in `let` today. Reuse the existing pattern
-  machinery on the binding's left-hand side (record pun/rename, array, and — with the item
-  above — tuple patterns). _Source: OCaml comparison; reuses the pattern-matching engine._
-
-- **Pattern-matching extras** — _Value: Medium · Effort: Low · Fit: Great._
-  Each is a small parser/codegen change that makes `match` markedly more expressive:
-  - **Or-patterns** — `| Circle _ | Square _ ->`, `| 0 | 1 ->`.
-  - **As-patterns** — `whole as { … }`, `x as [a, b]`.
-  - **Negative-number literal patterns** — `| -1 ->` (doesn't parse today).
+- **Pattern-matching extras (remainder)** — _Value: Medium · Effort: Low._ Negative-literal
+  patterns shipped; these are the rest:
+  - **Or-patterns** — `| Circle _ | Square _ ->`, `| 0 | 1 ->`. Cycle 1 = test-only
+    (alternatives bind no variables).
+  - **As-patterns** — `[a, b] as whole`, `Some(v) as opt` (`pattern as name`, ML-style).
   - Lower priority: record **key-presence testing** (absent fields bind `nil` by design),
     **non-linear/hygiene** (`[a, a]` is last-wins), and delimiting a **greedy nested
     `match`/`if` arm** without parentheses. _Source: 2026-08-02 pattern-matching reviews._
@@ -134,6 +114,10 @@ output and trivial distribution that are the point.
 - **CLI `--out` write error** reports source position `1:1` (cosmetic).
 - **Parser `at` / `peek` overshoot guard** — safe today via the lexer's EOF token; a nil-guard
   would harden it.
+- **Arity-0 positional constructor vs nullary** — the checker treats `type E = Z()` as distinct
+  from a bare nullary `Z` (the spec says `Ctor()` ≡ nullary), so a bare `Z` under `--check`
+  gets a false-positive shape-mismatch. Only the spec-discouraged `Z()` form triggers it;
+  runtime is consistent. Fix: normalize arity-0 positional → nullary in `build_registry`.
 
 ---
 
@@ -149,7 +133,13 @@ Condensed; the `CHANGELOG.md` and each cycle's spec carry the detail.
   and `match` as first-class expressions (2026-08-07).
 - **Sum types** — runtime ADTs with capitalized named-field constructors + `{ __tag }` rep
   (2026-08-08); structural exhaustiveness / construction / constructor-pattern checking
-  (2026-08-11).
+  (2026-08-11); **positional constructors** `type Option = Some(a) | None` — `Some(3)` /
+  `match Some(x)`, coexisting with named + nullary, arity + shape-mismatch checks (2026-08-28).
+- **Language deepening** (2026-08) — **functional record update** `{ r with f = v }` (shallow
+  copy-and-override, works on sum-type values); **tuples** `(x, y)` + tuple patterns
+  (fixed-arity array sugar); **destructuring `let`** — `let { x } = r` / `let [a, b] = xs` /
+  `let (a, b) = t` (irrefutable; block, top-level, and `pub`); **negative-literal patterns**
+  `| -1 ->`.
 - **Types** — optional, erased type annotations with opt-in `omelette check` (2026-07-21).
 - **Recursion** — top-level forward references / mutual recursion; `pub let` recursion-by-name.
 - **Standard library** — `std.list` / `std.string` / `std.table` (incl. `merge`); **bundled
@@ -160,4 +150,5 @@ Condensed; the `CHANGELOG.md` and each cycle's spec carry the detail.
 - **Release engineering** — CI (LuaJIT + Lua 5.4); single-file amalgam with bundled typecheck;
   tag-triggered releases; **auto-tag-on-version-bump**; **Pages deploy** on push to canon.
 - **Quality fixes** — literal-base field/call wrapping (`prefix()`); `searcher.install()`
-  idempotency.
+  idempotency; **checker no longer crashes on destructuring `let`** (the checker assumed every
+  `let` has a `.name`; now handles pattern lets, 2026-08-30).
