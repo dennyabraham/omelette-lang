@@ -6,14 +6,17 @@
 <article>
 <h1>Playground</h1>
 <p>Try the Omelette compiler in your browser. Nothing leaves your machine.</p>
-<code-input id="editor" language="omelette" template="omelette">type Shape = | Circle { radius } | Origin
+<code-input id="editor" language="omelette" template="omelette">type Tree = Leaf(n) | Node(l, r)
 
-let area s =
-  match s with
-  | Circle { radius } -&gt; 3 * radius * radius
-  | Origin            -&gt; 0
+let sum t =
+  match t with
+  | Leaf(n)    -&gt; n
+  | Node(l, r) -&gt; sum(l) + sum(r)
 
-print(area(Circle { radius = 3 }))
+let tree = Node(Leaf(1), Node(Leaf(2), Leaf(3)))
+let (label, total) = ("sum", sum(tree))
+print(label)
+print(total)
 </code-input>
 <div class="controls">
   <button id="run">Run</button>
