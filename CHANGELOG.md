@@ -2,10 +2,14 @@
 
 All notable changes to Omelette are documented here (Keep a Changelog format).
 
+## [0.1.6]
+First release published to LuaRocks.
+- CI: the release/publish job now runs under PUC Lua 5.4 instead of LuaJIT — `luarocks install`/`upload` load the luarocks.org manifest, a giant table that exceeds LuaJIT's per-function constants limit. (The suite/amalgam build run identically; the CI matrix already covers 5.4.)
+- Carries the earlier release fixes: `dkjson` installed for `luarocks upload`, the `release` environment attachment, and the destructuring-`let` checker crash fix.
+
 ## [0.1.5]
-First release actually published to LuaRocks.
-- CI: the LuaRocks publish step now installs a JSON library (`dkjson`) that `luarocks upload` requires (0.1.4 cut a GitHub Release but failed to upload without it).
-- Carries the 0.1.4 fixes: the destructuring-`let` checker crash fix, and the release job attaching to the `release` environment.
+Cut a GitHub Release; the LuaRocks upload still failed (LuaJIT couldn't load the luarocks manifest — fixed in 0.1.6).
+- CI: installed `dkjson` for `luarocks upload` (0.1.4 lacked a JSON library).
 
 ## [0.1.4]
 Cut a GitHub Release but did not publish to LuaRocks (the upload step lacked a JSON library — fixed in 0.1.5).
