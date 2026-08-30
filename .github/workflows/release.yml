@@ -29,7 +29,11 @@ jobs:
           fetch-depth: 0
       - uses: leafo/gh-actions-lua@v13
         with:
-          luaVersion: "luajit"
+          # PUC Lua, not LuaJIT: luarocks operations load the luarocks.org manifest, a giant
+          # Lua table that exceeds LuaJIT's 65536-constants-per-function limit (`luarocks
+          # install`/`upload` fail under luajit). PUC Lua parses it fine. The suite + amalgam
+          # build run identically here (CI already tests 5.4).
+          luaVersion: "5.4"
       - uses: leafo/gh-actions-luarocks@v4
       - name: Validate tag matches init.lua version
         run: lua scripts/check-version.lua "${TAG}"
