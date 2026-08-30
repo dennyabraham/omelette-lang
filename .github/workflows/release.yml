@@ -16,6 +16,10 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Attach to the `release` environment so the job can read its LUAROCKS_API_KEY secret.
+    # Without this, environment-scoped secrets resolve to empty and the publish step below
+    # is silently skipped (HAS_ROCKS_KEY stays false).
+    environment: release
     permissions:
       contents: write
     env:
