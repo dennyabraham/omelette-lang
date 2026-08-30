@@ -54,6 +54,9 @@ jobs:
         if: ${{ env.HAS_ROCKS_KEY == 'true' && github.event.repository.private == false }}
         run: |
           VERSION="${TAG#v}"
+          # `luarocks upload` talks to the LuaRocks API and needs a Lua JSON library;
+          # the runner has none by default, so install one first.
+          luarocks install dkjson
           sed -e "s/@VERSION@/${VERSION}/g" -e "s/@TAG@/${TAG}/g" \
             rockspecs/omelette.rockspec.template > "omelette-${VERSION}-1.rockspec"
           luarocks upload "omelette-${VERSION}-1.rockspec" --api-key="${{ secrets.LUAROCKS_API_KEY }}"
