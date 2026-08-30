@@ -2,6 +2,11 @@
 
 All notable changes to Omelette are documented here (Keep a Changelog format).
 
+## [0.1.3]
+First release published to LuaRocks.
+- Fixed: `omelette check` no longer crashes on destructuring `let` bindings (the checker assumed every `let` has a name).
+- Release CI now attaches to the `release` environment so the `LUAROCKS_API_KEY` secret is available to the publish step.
+
 ## [0.1.2]
 Maintenance release — no language changes since 0.1.1.
 - CI: releases are now cut automatically when `omelette/init.lua`'s version changes (auto-tag → release), alongside the existing manual-tag path.
