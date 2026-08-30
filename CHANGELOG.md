@@ -2,8 +2,13 @@
 
 All notable changes to Omelette are documented here (Keep a Changelog format).
 
+## [0.1.5]
+First release actually published to LuaRocks.
+- CI: the LuaRocks publish step now installs a JSON library (`dkjson`) that `luarocks upload` requires (0.1.4 cut a GitHub Release but failed to upload without it).
+- Carries the 0.1.4 fixes: the destructuring-`let` checker crash fix, and the release job attaching to the `release` environment.
+
 ## [0.1.4]
-First release published to LuaRocks.
+Cut a GitHub Release but did not publish to LuaRocks (the upload step lacked a JSON library — fixed in 0.1.5).
 - Fixed: `omelette check` no longer crashes on destructuring `let` bindings (the checker assumed every `let` has a name).
 - Release CI now attaches to the `release` environment (and its allowlist includes `canon`) so the `LUAROCKS_API_KEY` secret is available to the publish step.
 
