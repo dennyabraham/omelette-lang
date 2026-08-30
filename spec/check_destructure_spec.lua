@@ -1,0 +1,30 @@
+local h = require("spec.support.harness")
+local compiler = require("omelette.compiler")
+-- Regression: the checker (`{ check = true }`) used to crash on any destructuring `let`
+-- because M.check / check_binding assumed every let has a `.name` (a destructuring let
+-- carries `.pattern` instead). It must instead check the value and treat the bound names
+-- as `any` (dynamic this cycle).
+
+h.describe("typecheck: destructuring let bindings", function()
+  h.it("checks a top-level record destructuring let without crashing", function()
+    h.truthy(compiler.compile("pub let { x } = { x = 1 }", { check = true }))
+  end)
+  h.it("checks a top-level tuple destructuring let without crashing", function()
+    h.truthy(compiler.compile("pub let (a, b) = (1, 2)", { check = true }))
+  end)
+  h.it("checks a top-level array destructuring let without crashing", function()
+    h.truthy(compiler.compile("pub let [a, b] = [10, 20]", { check = true }))
+  end)
+  h.it("checks a block-local destructuring let without crashing", function()
+    h.truthy(compiler.compile("pub let f p =\n  let { x } = p\n  x", { check = true }))
+  end)
+  h.it("a destructured name is usable by later top-level bindings under the checker", function()
+    h.truthy(compiler.compile("pub let { base } = { base = 2 }\npub let r = base + 1", { check = true }))
+  end)
+  h.it("still reports a type error inside a destructuring let's value", function()
+    -- P is declared arity 2; P(1) in the value must still be flagged (value is checked, not skipped)
+    local ok, err = compiler.compile("type P = P(a, b)\npub let (x) = P(1)", { check = true })
+    h.truthy(not ok)
+    h.truthy(err.message:find("argument", 1, true))
+  end)
+end)

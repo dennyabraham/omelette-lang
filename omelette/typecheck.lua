@@ -333,6 +333,14 @@ end
 
 -- check a `let` binding and add it to the scope
 function Checker:check_binding(node, env)
+  if node.pattern then
+    -- destructuring let: check the value (so type errors inside it still surface), and
+    -- declare the bound names as `any` (dynamic this cycle — no typed destructuring yet)
+    self:synth(node.value, env)
+    local names = {}; collect_pattern_vars(node.pattern, names)
+    for _, nm in ipairs(names) do env.vars[nm] = ANY end
+    return
+  end
   if node.params then
     env.vars[node.name] = self:decl_type(node)   -- declare first (recursion)
     local s = scope(env)
@@ -372,7 +380,15 @@ function M.check(program)
   local genv = scope(nil)
   -- pass 1: declare all top-level binding types (so calls resolve regardless of order)
   for _, node in ipairs(program.stmts) do
-    if node.kind == "let" then genv.vars[node.name] = c:decl_type(node) end
+    if node.kind == "let" then
+      if node.pattern then
+        -- destructuring let: declare each bound name as `any` (dynamic this cycle)
+        local names = {}; collect_pattern_vars(node.pattern, names)
+        for _, nm in ipairs(names) do genv.vars[nm] = ANY end
+      else
+        genv.vars[node.name] = c:decl_type(node)
+      end
+    end
   end
   -- pass 2: check bodies (check_binding re-declares, which is fine/idempotent)
   for _, node in ipairs(program.stmts) do
