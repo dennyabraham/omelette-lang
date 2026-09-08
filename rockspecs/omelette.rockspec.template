@@ -20,10 +20,13 @@ build = {
   build_command = "lua build/build-std.lua build-out",
   -- plain string concatenation (the `..` operator needs no stdlib), so the rockspec loads in
   -- a bare sandbox; $(LUADIR)/$(BINDIR) are LuaRocks' install-location substitutions.
+  -- The installed launcher is generated from bin/omelette.in with @LUADIR@ replaced by the
+  -- rock's Lua dir, so the CLI resolves omelette.*/std.* without `luarocks path` and uses a
+  -- portable `lua` shebang. (# is the sed delimiter so the path's slashes need no escaping.)
   install_command =
     "mkdir -p $(LUADIR)/omelette $(LUADIR)/std $(BINDIR) && " ..
     "cp omelette/*.lua $(LUADIR)/omelette/ && " ..
     "cp build-out/std/*.lua $(LUADIR)/std/ && " ..
-    "cp bin/omelette $(BINDIR)/omelette && " ..
+    "sed 's#@LUADIR@#$(LUADIR)#g' bin/omelette.in > $(BINDIR)/omelette && " ..
     "chmod +x $(BINDIR)/omelette",
 }

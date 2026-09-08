@@ -1,0 +1,9 @@
+#!/usr/bin/env lua
+-- Installed launcher template. The LuaRocks command build (see rockspecs/omelette.rockspec.template)
+-- generates the real bin/omelette from this file, substituting @LUADIR@ with the rock's Lua
+-- module directory. Hardcoding that directory means the installed CLI resolves omelette.* and
+-- std.* without needing `luarocks path` on the user's shell, and the portable `lua` shebang
+-- avoids assuming LuaJIT. (The repo's bin/omelette is the dev launcher, resolved relative to
+-- the checkout.)
+package.path = "@LUADIR@/?.lua;@LUADIR@/?/init.lua;" .. package.path
+os.exit(require("omelette.cli").main(arg))
