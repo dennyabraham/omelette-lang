@@ -2,6 +2,9 @@
 
 All notable changes to Omelette are documented here (Keep a Changelog format).
 
+## [0.1.7]
+- Installed CLI: the LuaRocks launcher is generated with the rock's Lua module directory baked in (and a portable `lua` shebang instead of `luajit`), so an installed `omelette` resolves its own modules and `std.*` without needing `luarocks path` set in the shell.
+
 ## [0.1.6]
 First release published to LuaRocks.
 - CI: the release/publish job now runs under PUC Lua 5.4 instead of LuaJIT — `luarocks install`/`upload` load the luarocks.org manifest, a giant table that exceeds LuaJIT's per-function constants limit. (The suite/amalgam build run identically; the CI matrix already covers 5.4.)
