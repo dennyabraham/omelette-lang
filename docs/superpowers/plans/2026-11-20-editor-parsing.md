@@ -45,7 +45,7 @@ Each task is one commit with its own tests. The suite has 376 tests and must sta
 2. **An indented `let` is not a sync point.** A `let` inside a function body, in column 3, must not restart parsing in the middle of the broken function. Tested in Task 3.
 3. **The file ends in the middle of a statement.** `let x =` at the end of the file gives one diagnostic, and the parser stops. Tested in Task 3.
 4. **Multi-byte UTF-8.** A string containing `é` gets an `end_col` in bytes, not characters. Tested in Task 1.
-5. **An unterminated string on the last line, with no trailing newline,** ends at the end of the file, without an error from the lexer itself. Tested in Task 1.
+5. **An unterminated string on the last line, with no trailing newline,** ends at the end of the file, with one diagnostic. Tested in Task 1.
 
 ---
 
