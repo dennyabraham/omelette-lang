@@ -8,7 +8,7 @@ local function gen(s) return codegen.expr(assert(parser.parse_expr_string(s)), c
 h.describe("length operator", function()
   h.it("lexes # as an op token", function()
     local toks = assert(lexer.tokenize("#xs"))
-    h.eq(toks[1], { type = "op", value = "#", line = 1, col = 1 })
+    h.eq(h.without_ends(toks[1]), { type = "op", value = "#", line = 1, col = 1 })
     h.eq(toks[2].value, "xs")
   end)
   h.it("parses #xs as a unop", function()

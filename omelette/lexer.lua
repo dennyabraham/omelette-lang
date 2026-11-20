@@ -17,8 +17,12 @@ local PUNCT = { ["("]=true,[")"]=true,["{"]=true,["}"]=true,["["]=true,
 
 local ESCAPES = { n="\n", t="\t", r="\r", ['"']='"', ["\\"]="\\" }
 
-function M.tokenize(source)
-  local toks, i, line, col = {}, 1, 1, 1
+-- With opts.recover, an error is recorded and lexing continues, and the result is
+-- { tokens, comments, diagnostics }. Without it, the first error is returned.
+function M.tokenize(source, opts)
+  local recover = opts and opts.recover
+  local toks, comments, diags = {}, {}, {}
+  local i, line, col = 1, 1, 1
   local n = #source
   local function peek(o) return source:sub(i + (o or 0), i + (o or 0)) end
   local function advance()
@@ -27,15 +31,23 @@ function M.tokenize(source)
     i = i + 1
     return c
   end
+  local function push(ty, value, sline, scol)
+    toks[#toks + 1] = { type = ty, value = value, line = sline, col = scol,
+                        end_line = line, end_col = col }
+  end
 
   while i <= n do
     local c = peek()
     if c == " " or c == "\t" or c == "\r" or c == "\n" then
       advance()
     elseif c == "-" and peek(1) == "-" then
+      local sline, scol, start = line, col, i
       while i <= n and peek() ~= "\n" do advance() end
+      comments[#comments + 1] = { text = source:sub(start, i - 1), line = sline, col = scol,
+                                  end_line = line, end_col = col }
     elseif c == '"' then
-      local startcol = col
+      local sline, startcol = line, col
+      local start = i
       advance()
       local buf = {}
       while i <= n and peek() ~= '"' do
@@ -47,27 +59,36 @@ function M.tokenize(source)
           buf[#buf + 1] = ch
         end
       end
-      if peek() ~= '"' then
-        return nil, errors.new("unterminated string", line, startcol, source)
+      if peek() == '"' then
+        advance()
+        push("string", table.concat(buf), sline, startcol)
+      else
+        local err = errors.new("unterminated string", sline, startcol, source)
+        if not recover then return nil, err end
+        diags[#diags + 1] = err
+        -- end the string at the end of its first line so the following lines still lex
+        local eol = source:find("\n", start, true) or (n + 1)
+        local text = source:sub(start + 1, eol - 1)
+        i, line, col = start, sline, startcol
+        while i < eol do advance() end
+        push("string", text, sline, startcol)
       end
-      advance()
-      toks[#toks + 1] = { type = "string", value = table.concat(buf), line = line, col = startcol }
     elseif c:match("%d") then
       local startcol = col
       local buf = {}
       while i <= n and peek():match("[%d%.]") do buf[#buf + 1] = advance() end
-      toks[#toks + 1] = { type = "number", value = tonumber(table.concat(buf)), line = line, col = startcol }
+      push("number", tonumber(table.concat(buf)), line, startcol)
     elseif c:match("[%a_]") then
       local startcol = col
       local buf = {}
       while i <= n and peek():match("[%w_]") do buf[#buf + 1] = advance() end
       local word = table.concat(buf)
       if word == "_" then
-        toks[#toks + 1] = { type = "punct", value = "_", line = line, col = startcol }
+        push("punct", "_", line, startcol)
       elseif KEYWORDS[word] then
-        toks[#toks + 1] = { type = "keyword", value = word, line = line, col = startcol }
+        push("keyword", word, line, startcol)
       else
-        toks[#toks + 1] = { type = "ident", value = word, line = line, col = startcol }
+        push("ident", word, line, startcol)
       end
     else
       local startcol = col
@@ -76,20 +97,24 @@ function M.tokenize(source)
       for _, op in ipairs(MULTI_OPS) do if two == op then matched = op break end end
       if matched then
         advance(); advance()
-        toks[#toks + 1] = { type = "op", value = matched, line = line, col = startcol }
+        push("op", matched, line, startcol)
       elseif SINGLE_OPS[c] then
         advance()
-        toks[#toks + 1] = { type = "op", value = c, line = line, col = startcol }
+        push("op", c, line, startcol)
       elseif PUNCT[c] then
         advance()
-        toks[#toks + 1] = { type = "punct", value = c, line = line, col = startcol }
+        push("punct", c, line, startcol)
       else
-        return nil, errors.new("unexpected character '" .. c .. "'", line, col, source)
+        local err = errors.new("unexpected character '" .. c .. "'", line, col, source)
+        if not recover then return nil, err end
+        diags[#diags + 1] = err
+        advance()
       end
     end
   end
 
-  toks[#toks + 1] = { type = "eof", value = "<eof>", line = line, col = col }
+  push("eof", "<eof>", line, col)
+  if recover then return { tokens = toks, comments = comments, diagnostics = diags } end
   return toks, nil
 end
 

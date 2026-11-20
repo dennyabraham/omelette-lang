@@ -29,6 +29,19 @@ function M.eq(a, b)
   if not deep_eq(a, b) then error("expected " .. render(b) .. " got " .. render(a), 2) end
 end
 
+local RANGE_FIELDS = { start_line = true, start_col = true, end_line = true, end_col = true }
+
+-- A deep copy of v without source ranges, for assertions written before tokens and
+-- nodes carried them.
+function M.without_ends(v)
+  if type(v) ~= "table" then return v end
+  local out = {}
+  for k, val in pairs(v) do
+    if not RANGE_FIELDS[k] then out[k] = M.without_ends(val) end
+  end
+  return out
+end
+
 function M.truthy(v) if not v then error("expected truthy, got " .. tostring(v), 2) end end
 
 function M.throws(fn) return not (pcall(fn)) end

@@ -6,7 +6,7 @@ local function cases(s) return assert(parser.parse("pub let f v = match v with "
 h.describe("pattern parsing", function()
   h.it("lexes when as a keyword", function()
     local toks = assert(lexer.tokenize("x when y"))
-    h.eq(toks[2], { type = "keyword", value = "when", line = 1, col = 3 })
+    h.eq(h.without_ends(toks[2]), { type = "keyword", value = "when", line = 1, col = 3 })
   end)
   h.it("parses literal and wildcard (regression)", function()
     local c = cases("| 0 -> 1 | _ -> 2")

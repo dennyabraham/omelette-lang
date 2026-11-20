@@ -9,7 +9,7 @@ local function gen(s) return codegen.expr(assert(parser.parse_expr_string(s)), c
 h.describe("range literals", function()
   h.it("lexes `to` as a keyword", function()
     local toks = assert(lexer.tokenize("1 to 5"))
-    h.eq(toks[2], { type = "keyword", value = "to", line = 1, col = 3 })
+    h.eq(h.without_ends(toks[2]), { type = "keyword", value = "to", line = 1, col = 3 })
   end)
   h.it("parses [a to b] as a range node", function()
     local e = expr("[1 to 5]")
