@@ -52,6 +52,11 @@ reports every syntax error instead of only the first.
   expression, so `let x =` with nothing after it reads the top-level `let`s that
   follow as its body, and fails only later. Resuming from the error would lose those
   statements.
+- When the error was found past that resume point, it is reported on the last token of
+  the failed statement, as `unfinished statement: line N starts the next top-level
+  statement`. Reporting it where it was found would put it far from the mistake, and
+  would repeat the error of a later statement, which is parsed again and reports its
+  own.
 - The column-1 rule depends on top-level statements starting in column 1, which is how
   all Omelette code in the repository is written. A top-level statement that is
   indented is skipped along with the broken one before it.

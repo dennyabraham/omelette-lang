@@ -299,14 +299,23 @@ function Parser:parse_program()
       if ok then
         stmts[#stmts + 1] = result
       elseif self.err then
-        self.diags[#self.diags + 1] = self.err
-        self.err = nil
+        local failed_at = self.pos
         self.pos = start + 1
         while not self:at("eof") do
           local t = self:peek()
           if t.type == "keyword" and SYNC[t.value] and t.col == 1 then break end
           self.pos = self.pos + 1
         end
+        -- An error past the next top-level statement is not where the user's mistake
+        -- is: report it on the last token of the unfinished statement. The statements
+        -- after it are parsed again and report their own errors.
+        if failed_at >= self.pos and not self:at("eof") then
+          local last = self.toks[self.pos - 1]
+          self.err = errors.new("unfinished statement: line " .. self:peek().line
+            .. " starts the next top-level statement", last.line, last.col, self.source)
+        end
+        self.diags[#self.diags + 1] = self.err
+        self.err = nil
       else
         error(result, 0)
       end
