@@ -1,0 +1,57 @@
+local h = require("spec.support.harness")
+local parser = require("omelette.parser")
+
+local function names(program)
+  local out = {}
+  for _, s in ipairs(program.stmts) do out[#out + 1] = s.name or s.kind end
+  return out
+end
+
+local function lines(diags)
+  local out = {}
+  for _, d in ipairs(diags) do out[#out + 1] = d.line end
+  return out
+end
+
+h.describe("parse_all", function()
+  h.it("reports each broken statement and keeps the valid ones", function()
+    local r = parser.parse_all("let a = 1\nlet b = )\nlet c = 1\nlet d = )\nlet e = 1\n")
+    h.eq(lines(r.diagnostics), { 2, 4 })
+    h.eq(names(r.program), { "a", "c", "e" })
+  end)
+  h.it("resumes after the start of a statement that took in the lets after it", function()
+    local r = parser.parse_all("let x =\nlet y = 2\nlet z = 3\n")
+    h.eq(#r.diagnostics, 1)
+    h.eq(names(r.program), { "y", "z" })
+  end)
+  h.it("does not resume at an indented let", function()
+    local r = parser.parse_all("let f a =\n  let y = )\n  let w = 1\n  y\nlet g = 1\n")
+    h.eq(#r.diagnostics, 1)
+    h.eq(names(r.program), { "g" })
+  end)
+  h.it("stops at the end of the file in the middle of a statement", function()
+    local r = parser.parse_all("let a = 1\nlet x =")
+    h.eq(#r.diagnostics, 1)
+    h.eq(names(r.program), { "a" })
+  end)
+  h.it("terminates on a file of only invalid tokens", function()
+    local r = parser.parse_all(") ) )")
+    h.truthy(#r.diagnostics >= 1)
+    h.eq(#r.program.stmts, 0)
+  end)
+  h.it("returns lexer and parser diagnostics in source order", function()
+    local r = parser.parse_all("let a = )\nlet b = 1 @ 2\n")
+    h.eq(lines(r.diagnostics), { 1, 2 })
+    h.eq(r.diagnostics[2].message, "unexpected character '@'")
+  end)
+  h.it("returns tokens and comments", function()
+    local r = parser.parse_all("-- hi\nlet a = 1\n")
+    h.eq(#r.comments, 1)
+    h.eq(r.tokens[1].value, "let")
+  end)
+  h.it("leaves parse stopping at the first error", function()
+    local prog, err = parser.parse("let a = 1\nlet b = )\nlet c = 1\nlet d = )\nlet e = 1\n")
+    h.eq(prog, nil)
+    h.eq(err.line, 2)
+  end)
+end)
