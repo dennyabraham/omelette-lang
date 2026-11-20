@@ -63,11 +63,12 @@ function M.tokenize(source, opts)
         advance()
         push("string", table.concat(buf), sline, startcol)
       else
-        local err = errors.new("unterminated string", sline, startcol, source)
+        local eol = source:find("\n", start, true) or (n + 1)
+        local err = errors.new("unterminated string", sline, startcol, source,
+          sline, startcol + (eol - start))
         if not recover then return nil, err end
         diags[#diags + 1] = err
         -- end the string at the end of its first line so the following lines still lex
-        local eol = source:find("\n", start, true) or (n + 1)
         local text = source:sub(start + 1, eol - 1)
         i, line, col = start, sline, startcol
         while i < eol do advance() end
@@ -105,7 +106,7 @@ function M.tokenize(source, opts)
         advance()
         push("punct", c, line, startcol)
       else
-        local err = errors.new("unexpected character '" .. c .. "'", line, col, source)
+        local err = errors.new("unexpected character '" .. c .. "'", line, col, source, line, col + 1)
         if not recover then return nil, err end
         diags[#diags + 1] = err
         advance()

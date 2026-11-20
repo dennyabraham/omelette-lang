@@ -10,9 +10,11 @@ local function nth_line(source, n)
   return nil
 end
 
-function M.new(message, line, col, source)
+-- Without an end position, a diagnostic covers one column.
+function M.new(message, line, col, source, end_line, end_col)
   local snippet = source and nth_line(source, line) or nil
-  return { message = message, line = line, col = col, snippet = snippet }
+  return { message = message, line = line, col = col, snippet = snippet,
+           end_line = end_line or line, end_col = end_col or col + 1 }
 end
 
 function M.render(d)
