@@ -27,7 +27,7 @@ function Parser:at(kind, value)
 end
 function Parser:fail(msg)
   local t = self:peek()
-  self.err = errors.new(msg, t.line, t.col, self.source)
+  self.err = errors.new(msg, t.line, t.col, self.source, t.end_line, t.end_col)
   error("__parse__")  -- internal unwind, caught at top
 end
 -- Sets node's source range: from `from` (a token, or a node whose range starts the
@@ -312,7 +312,8 @@ function Parser:parse_program()
         if failed_at >= self.pos and not self:at("eof") then
           local last = self.toks[self.pos - 1]
           self.err = errors.new("unfinished statement: line " .. self:peek().line
-            .. " starts the next top-level statement", last.line, last.col, self.source)
+            .. " starts the next top-level statement", last.line, last.col, self.source,
+            last.end_line, last.end_col)
         end
         self.diags[#self.diags + 1] = self.err
         self.err = nil

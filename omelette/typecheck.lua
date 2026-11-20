@@ -68,7 +68,7 @@ local Checker = {}
 Checker.__index = Checker
 local function new_checker() return setmetatable({ diags = {} }, Checker) end
 function Checker:err(msg, node)
-  self.diags[#self.diags + 1] = errors.new(msg, node.line or 1, node.col or 1)
+  self.diags[#self.diags + 1] = errors.new(msg, node.line or 1, node.col or 1, nil, node.end_line, node.end_col)
 end
 
 -- the declared type of a top-level/local binding (for the environment)
@@ -357,7 +357,7 @@ function Checker:check_binding(node, env)
         -- mismatch -- the more directly relevant diagnostic for this binding --
         -- is reported first.
         local msg = "function '" .. node.name .. "' returns " .. tyname(bodyt) .. ", declared " .. tyname(rt)
-        table.insert(self.diags, mark + 1, errors.new(msg, node.line or 1, node.col or 1))
+        table.insert(self.diags, mark + 1, errors.new(msg, node.line or 1, node.col or 1, nil, node.end_line, node.end_col))
       end
     end
   else
