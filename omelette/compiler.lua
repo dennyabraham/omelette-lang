@@ -2,11 +2,13 @@ local parser = require("omelette.parser")
 local codegen = require("omelette.codegen")
 local M = {}
 
+-- Syntax errors first, then type errors in the statements that parsed.
 function M.check(source)
-  local program, perr = parser.parse(source)
-  if not program then return nil, perr end
+  local parsed = parser.parse_all(source)
   local typecheck = require("omelette.typecheck")
-  return typecheck.check(program), nil
+  local diags = parsed.diagnostics
+  for _, d in ipairs(typecheck.check(parsed.program)) do diags[#diags + 1] = d end
+  return diags, nil
 end
 
 function M.compile(source, opts)
