@@ -30,6 +30,15 @@ function Parser:fail(msg)
   self.err = errors.new(msg, t.line, t.col, self.source)
   error("__parse__")  -- internal unwind, caught at top
 end
+-- Sets node's source range: from `from` (a token, or a node whose range starts the
+-- new one) to the end of the last consumed token.
+function Parser:finish(node, from)
+  local last = self.toks[self.pos - 1] or from
+  node.start_line = from.start_line or from.line
+  node.start_col = from.start_col or from.col
+  node.end_line, node.end_col = last.end_line, last.end_col
+  return node
+end
 function Parser:expect(kind, value)
   if not self:at(kind, value) then
     self:fail("expected " .. (value or kind) .. " but got '" .. tostring(self:peek().value) .. "'")
@@ -45,7 +54,7 @@ function Parser:parse_pipe()
   while self:at("op", "|>") do
     local t = self:next()
     local right = self:parse_binop(0)
-    left = { kind = "pipe", lhs = left, rhs = right, line = t.line, col = t.col }
+    left = self:finish({ kind = "pipe", lhs = left, rhs = right, line = t.line, col = t.col }, left)
   end
   return left
 end
@@ -59,7 +68,7 @@ function Parser:parse_binop(min_prec)
     if not prec or prec < min_prec then break end
     self:next()
     local right = self:parse_binop(prec + 1)
-    left = { kind = "binop", op = op, lhs = left, rhs = right, line = t.line, col = t.col }
+    left = self:finish({ kind = "binop", op = op, lhs = left, rhs = right, line = t.line, col = t.col }, left)
   end
   return left
 end
@@ -69,7 +78,7 @@ function Parser:parse_unary()
   if self:at("op", "-") or self:at("op", "#") or self:at("keyword", "not") then
     self:next()
     local operand = self:parse_unary()
-    return { kind = "unop", op = t.value, operand = operand, line = t.line, col = t.col }
+    return self:finish({ kind = "unop", op = t.value, operand = operand, line = t.line, col = t.col }, t)
   end
   return self:parse_postfix()
 end
@@ -81,7 +90,7 @@ function Parser:parse_postfix()
     if self:at("punct", ".") then
       local t = self:next()
       local name = self:expect("ident")
-      node = { kind = "field", obj = node, name = name.value, line = t.line, col = t.col }
+      node = self:finish({ kind = "field", obj = node, name = name.value, line = t.line, col = t.col }, node)
     elseif self:at("punct", "(") then
       local t = self:next()
       local args = {}
@@ -89,19 +98,19 @@ function Parser:parse_postfix()
         repeat
           if self:at("punct", "_") then
             local ht = self:next()
-            args[#args + 1] = { kind = "hole", line = ht.line, col = ht.col }
+            args[#args + 1] = self:finish({ kind = "hole", line = ht.line, col = ht.col }, ht)
           else
             args[#args + 1] = self:parse_expr_or_form()
           end
         until not self:accept_comma()
       end
       self:expect("punct", ")")
-      node = { kind = "call", fn = node, args = args, line = t.line, col = t.col }
+      node = self:finish({ kind = "call", fn = node, args = args, line = t.line, col = t.col }, node)
     elseif self:at("punct", "[") then
       local t = self:next()
       local key = self:parse_expr()
       self:expect("punct", "]")
-      node = { kind = "index", obj = node, key = key, line = t.line, col = t.col }
+      node = self:finish({ kind = "index", obj = node, key = key, line = t.line, col = t.col }, node)
     else
       break
     end
@@ -128,7 +137,7 @@ function Parser:parse_qualifiers()
       local name = self:next().value
       self:expect("op", "<-")
       local source = self:parse_expr()
-      quals[#quals + 1] = { kind = "generator", name = name, value_name = nil, source = source }
+      quals[#quals + 1] = self:finish({ kind = "generator", name = name, value_name = nil, source = source }, cur)
       has_gen = true
     elseif cur.type == "ident" and nxt and nxt.type == "punct" and nxt.value == ","
         and t3 and t3.type == "ident" and t4 and t4.type == "op" and t4.value == "<-" then
@@ -137,11 +146,11 @@ function Parser:parse_qualifiers()
       local value_name = self:expect("ident").value
       self:expect("op", "<-")
       local source = self:parse_expr()
-      quals[#quals + 1] = { kind = "generator", name = name, value_name = value_name, source = source }
+      quals[#quals + 1] = self:finish({ kind = "generator", name = name, value_name = value_name, source = source }, cur)
       has_gen = true
     else
       local cond = self:parse_expr()
-      quals[#quals + 1] = { kind = "guard", cond = cond }
+      quals[#quals + 1] = self:finish({ kind = "guard", cond = cond }, cur)
     end
   until not self:accept_comma()
   if not has_gen then self:fail("comprehension needs at least one generator (name <- source)") end
@@ -150,15 +159,15 @@ end
 
 function Parser:parse_primary()
   local t = self:peek()
-  if t.type == "number" then self:next(); return { kind = "number", value = t.value, line = t.line, col = t.col } end
-  if t.type == "string" then self:next(); return { kind = "string", value = t.value, line = t.line, col = t.col } end
-  if self:at("keyword", "true") then self:next(); return { kind = "bool", value = true, line = t.line, col = t.col } end
-  if self:at("keyword", "false") then self:next(); return { kind = "bool", value = false, line = t.line, col = t.col } end
-  if self:at("keyword", "nil") then self:next(); return { kind = "nil", line = t.line, col = t.col } end
+  if t.type == "number" then self:next(); return self:finish({ kind = "number", value = t.value, line = t.line, col = t.col }, t) end
+  if t.type == "string" then self:next(); return self:finish({ kind = "string", value = t.value, line = t.line, col = t.col }, t) end
+  if self:at("keyword", "true") then self:next(); return self:finish({ kind = "bool", value = true, line = t.line, col = t.col }, t) end
+  if self:at("keyword", "false") then self:next(); return self:finish({ kind = "bool", value = false, line = t.line, col = t.col }, t) end
+  if self:at("keyword", "nil") then self:next(); return self:finish({ kind = "nil", line = t.line, col = t.col }, t) end
   if self:at("keyword", "lua") then
     self:next()
     local s = self:expect("string")
-    return { kind = "lua_raw", code = s.value, line = t.line, col = t.col }
+    return self:finish({ kind = "lua_raw", code = s.value, line = t.line, col = t.col }, t)
   end
   if t.type == "ident" then
     self:next()
@@ -171,7 +180,7 @@ function Parser:parse_primary()
           repeat args[#args + 1] = self:parse_expr() until not self:accept_comma()
         end
         self:expect("punct", ")")
-        return { kind = "construct", tag = t.value, positional = true, args = args, line = t.line, col = t.col }
+        return self:finish({ kind = "construct", tag = t.value, positional = true, args = args, line = t.line, col = t.col }, t)
       end
       local fields = {}
       if self:at("punct", "{") then
@@ -186,9 +195,9 @@ function Parser:parse_primary()
         end
         self:expect("punct", "}")
       end
-      return { kind = "construct", tag = t.value, fields = fields, line = t.line, col = t.col }
+      return self:finish({ kind = "construct", tag = t.value, fields = fields, line = t.line, col = t.col }, t)
     end
-    return { kind = "ident", name = t.value, line = t.line, col = t.col }
+    return self:finish({ kind = "ident", name = t.value, line = t.line, col = t.col }, t)
   end
   if self:at("punct", "(") then
     self:next()
@@ -201,42 +210,43 @@ function Parser:parse_primary()
         items[#items + 1] = self:parse_expr()
       end
       self:expect("punct", ")")
-      return { kind = "array", items = items, line = t.line, col = t.col }
+      return self:finish({ kind = "array", items = items, line = t.line, col = t.col }, t)
     end
     self:expect("punct", ")")
-    return first
+    -- a parenthesized expression's range includes its parentheses
+    return self:finish(first, t)
   end
   if self:at("punct", "[") then
     self:next()
     if self:at("punct", "]") then
       self:next()
-      return { kind = "array", items = {}, line = t.line, col = t.col }
+      return self:finish({ kind = "array", items = {}, line = t.line, col = t.col }, t)
     end
     local first = self:parse_expr()
     if self:at("keyword", "to") then
       self:next()
       local to_expr = self:parse_expr()
       self:expect("punct", "]")
-      return { kind = "range", from = first, to = to_expr, line = t.line, col = t.col }
+      return self:finish({ kind = "range", from = first, to = to_expr, line = t.line, col = t.col }, t)
     end
     if self:at("punct", "|") then
       self:next()
       local quals = self:parse_qualifiers()
       self:expect("punct", "]")
-      return { kind = "comprehension", yield = first, quals = quals, line = t.line, col = t.col }
+      return self:finish({ kind = "comprehension", yield = first, quals = quals, line = t.line, col = t.col }, t)
     end
     local items = { first }
     while self:accept_comma() do
       items[#items + 1] = self:parse_expr()
     end
     self:expect("punct", "]")
-    return { kind = "array", items = items, line = t.line, col = t.col }
+    return self:finish({ kind = "array", items = items, line = t.line, col = t.col }, t)
   end
   if self:at("punct", "{") then
     self:next()
     if self:at("punct", "}") then
       self:next()
-      return { kind = "table", fields = {}, line = t.line, col = t.col }
+      return self:finish({ kind = "table", fields = {}, line = t.line, col = t.col }, t)
     end
     -- record literal: `ident = …`; anything else is a dict comprehension
     if self:at("ident") and self:peek2() and self:peek2().type == "op" and self:peek2().value == "=" then
@@ -248,7 +258,7 @@ function Parser:parse_primary()
         fields[#fields + 1] = { key = key.value, value = value }
       until not self:accept_comma()
       self:expect("punct", "}")
-      return { kind = "table", fields = fields, line = t.line, col = t.col }
+      return self:finish({ kind = "table", fields = fields, line = t.line, col = t.col }, t)
     end
     -- functional record update `expr with f = v, …`, or dict comprehension `key => value | quals`
     local head = self:parse_expr()
@@ -262,14 +272,14 @@ function Parser:parse_primary()
         fields[#fields + 1] = { key = key, value = value }
       until not self:accept_comma()
       self:expect("punct", "}")
-      return { kind = "record_update", base = head, fields = fields, line = t.line, col = t.col }
+      return self:finish({ kind = "record_update", base = head, fields = fields, line = t.line, col = t.col }, t)
     end
     self:expect("op", "=>")
     local value = self:parse_expr()
     self:expect("punct", "|")
     local quals = self:parse_qualifiers()
     self:expect("punct", "}")
-    return { kind = "dict_comprehension", key = head, value = value, quals = quals, line = t.line, col = t.col }
+    return self:finish({ kind = "dict_comprehension", key = head, value = value, quals = quals, line = t.line, col = t.col }, t)
   end
   self:fail("unexpected token '" .. tostring(t.value) .. "'")
 end
@@ -279,7 +289,13 @@ function Parser:parse_program()
   while not self:at("eof") do
     stmts[#stmts + 1] = self:parse_statement()
   end
-  return { kind = "program", stmts = stmts, line = 1, col = 1 }
+  local program = { kind = "program", stmts = stmts, line = 1, col = 1,
+                    start_line = 1, start_col = 1, end_line = 1, end_col = 1 }
+  if #stmts > 0 then
+    program.start_line, program.start_col = stmts[1].start_line, stmts[1].start_col
+    program.end_line, program.end_col = stmts[#stmts].end_line, stmts[#stmts].end_col
+  end
+  return program
 end
 
 function Parser:parse_statement()
@@ -299,6 +315,7 @@ end
 -- (number/string/boolean/any/… as idents, or the nil keyword), or a function
 -- type `(T1, T2) -> R`.
 function Parser:parse_type()
+  local t = self:peek()
   if self:at("punct", "(") then
     self:next()
     local params = {}
@@ -308,14 +325,14 @@ function Parser:parse_type()
     self:expect("punct", ")")
     self:expect("op", "->")
     local ret = self:parse_type()
-    return { kind = "fun_type", params = params, ret = ret }
+    return self:finish({ kind = "fun_type", params = params, ret = ret }, t)
   end
   if self:at("keyword", "nil") then
     self:next()
-    return { kind = "type_name", name = "nil" }
+    return self:finish({ kind = "type_name", name = "nil" }, t)
   end
   local id = self:expect("ident")
-  return { kind = "type_name", name = id.value }
+  return self:finish({ kind = "type_name", name = id.value }, t)
 end
 
 -- a let pattern must always match; literal and constructor patterns are refutable.
@@ -342,8 +359,8 @@ function Parser:parse_let()
     self:check_irrefutable(pattern)
     self:expect("op", "=")
     local value = self:parse_block_or_expr()
-    return { kind = "let", pattern = pattern, value = value,
-             is_pub = is_pub, line = startt.line, col = startt.col }
+    return self:finish({ kind = "let", pattern = pattern, value = value,
+             is_pub = is_pub, line = startt.line, col = startt.col }, startt)
   end
   local name = self:expect("ident").value
   -- params: bare `ident` (untyped -> false) or parenthesized `(ident: type)`
@@ -376,9 +393,9 @@ function Parser:parse_let()
   end
   self:expect("op", "=")
   local value = self:parse_block_or_expr()
-  return { kind = "let", name = name, params = params, param_types = param_types,
+  return self:finish({ kind = "let", name = name, params = params, param_types = param_types,
            ret_type = ret_type, value_type = value_type, value = value,
-           is_pub = is_pub, line = startt.line, col = startt.col }
+           is_pub = is_pub, line = startt.line, col = startt.col }, startt)
 end
 
 function Parser:parse_type_decl()
@@ -415,8 +432,8 @@ function Parser:parse_type_decl()
       variants[#variants + 1] = { name = cname.value, fields = vfields }
     end
   until not (self:at("punct", "|") and self:next())
-  return { kind = "type_decl", name = name, is_pub = is_pub, variants = variants,
-           line = startt.line, col = startt.col }
+  return self:finish({ kind = "type_decl", name = name, is_pub = is_pub, variants = variants,
+           line = startt.line, col = startt.col }, startt)
 end
 
 function Parser:parse_block_or_expr()
@@ -429,8 +446,8 @@ function Parser:parse_block_or_expr()
     stmts[#stmts + 1] = self:parse_let()
   end
   local result = self:parse_expr_or_form()
-  return { kind = "block", stmts = stmts, result = result,
-           line = stmts[1].line, col = stmts[1].col }
+  return self:finish({ kind = "block", stmts = stmts, result = result,
+           line = stmts[1].line, col = stmts[1].col }, stmts[1])
 end
 
 -- expression position that may also begin with fn/if/match keyword forms
@@ -447,7 +464,7 @@ function Parser:parse_lambda()
   while self:at("ident") do params[#params + 1] = self:next().value end
   self:expect("op", "->")
   local body = self:parse_expr_or_form()
-  return { kind = "lambda", params = params, body = body, line = t.line, col = t.col }
+  return self:finish({ kind = "lambda", params = params, body = body, line = t.line, col = t.col }, t)
 end
 
 function Parser:parse_if()
@@ -457,18 +474,19 @@ function Parser:parse_if()
   local then_branch = self:parse_expr_or_form()
   self:expect("keyword", "else")
   local else_branch = self:parse_expr_or_form()
-  return { kind = "if", cond = cond, then_branch = then_branch,
-           else_branch = else_branch, line = t.line, col = t.col }
+  return self:finish({ kind = "if", cond = cond, then_branch = then_branch,
+           else_branch = else_branch, line = t.line, col = t.col }, t)
 end
 
 function Parser:parse_pattern()
-  if self:at("punct", "_") then self:next(); return { kind = "wildcard" } end
+  local t = self:peek()
+  if self:at("punct", "_") then self:next(); return self:finish({ kind = "wildcard" }, t) end
   -- negative number literal: `-` directly followed by a number token → negated numeric lit.
   -- (Only a numeric follower triggers this; `-x` stays an error, unchanged.)
   if self:at("op", "-") and self:peek2() and self:peek2().type == "number" then
     self:next()                 -- consume '-'
     local num = self:next()     -- the number token (num.value is a Lua number)
-    return { kind = "lit", value = -num.value, lit_kind = "number" }
+    return self:finish({ kind = "lit", value = -num.value, lit_kind = "number" }, t)
   end
   if self:at("punct", "[") then
     self:next()
@@ -477,34 +495,35 @@ function Parser:parse_pattern()
       repeat elems[#elems + 1] = self:parse_pattern() until not self:accept_comma()
     end
     self:expect("punct", "]")
-    return { kind = "array_pat", elems = elems }
+    return self:finish({ kind = "array_pat", elems = elems }, t)
   end
   if self:at("punct", "(") then
     self:next()
     local elems = {}
     repeat elems[#elems + 1] = self:parse_pattern() until not self:accept_comma()
     self:expect("punct", ")")
-    return { kind = "array_pat", elems = elems }
+    return self:finish({ kind = "array_pat", elems = elems }, t)
   end
   if self:at("punct", "{") then
     self:next()
     local fields = {}
     if not self:at("punct", "}") then
       repeat
-        local key = self:expect("ident").value
+        local keytok = self:expect("ident")
+        local key = keytok.value
         local pat
         if self:at("op", ":") then self:next(); pat = self:parse_pattern()
-        else pat = { kind = "var", name = key } end
+        else pat = self:finish({ kind = "var", name = key }, keytok) end
         fields[#fields + 1] = { key = key, pat = pat }
       until not self:accept_comma()
     end
     self:expect("punct", "}")
-    return { kind = "record_pat", fields = fields }
+    return self:finish({ kind = "record_pat", fields = fields }, t)
   end
   if self:at("number") or self:at("string") or self:at("keyword", "true")
       or self:at("keyword", "false") or self:at("keyword", "nil") then
     local lit = self:parse_primary()
-    return { kind = "lit", value = lit.value, lit_kind = lit.kind }
+    return self:finish({ kind = "lit", value = lit.value, lit_kind = lit.kind }, t)
   end
   local id = self:expect("ident")
   if id.value:sub(1, 1):match("%u") then
@@ -516,25 +535,26 @@ function Parser:parse_pattern()
         repeat args[#args + 1] = self:parse_pattern() until not self:accept_comma()
       end
       self:expect("punct", ")")
-      return { kind = "ctor_pat", tag = id.value, positional = true, args = args }
+      return self:finish({ kind = "ctor_pat", tag = id.value, positional = true, args = args }, t)
     end
     local fields = {}
     if self:at("punct", "{") then
       self:next()
       if not self:at("punct", "}") then
         repeat
-          local key = self:expect("ident").value
+          local keytok = self:expect("ident")
+          local key = keytok.value
           local p
           if self:at("op", ":") then self:next(); p = self:parse_pattern()
-          else p = { kind = "var", name = key } end
+          else p = self:finish({ kind = "var", name = key }, keytok) end
           fields[#fields + 1] = { key = key, pat = p }
         until not self:accept_comma()
       end
       self:expect("punct", "}")
     end
-    return { kind = "ctor_pat", tag = id.value, fields = fields }
+    return self:finish({ kind = "ctor_pat", tag = id.value, fields = fields }, t)
   end
-  return { kind = "var", name = id.value }
+  return self:finish({ kind = "var", name = id.value }, t)
 end
 
 function Parser:parse_match()
@@ -552,7 +572,7 @@ function Parser:parse_match()
     cases[#cases + 1] = { pattern = pattern, guard = guard, body = body }
   end
   if #cases == 0 then self:fail("match needs at least one | case") end
-  return { kind = "match", subject = subject, cases = cases, line = t.line, col = t.col }
+  return self:finish({ kind = "match", subject = subject, cases = cases, line = t.line, col = t.col }, t)
 end
 
 local function run(parser, fn)
