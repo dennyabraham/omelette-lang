@@ -7,7 +7,7 @@ local function prog(s) return assert(parser.parse(s)) end
 h.describe("annotations", function()
   h.it("lexes : as an op", function()
     local toks = assert(lexer.tokenize("x : number"))
-    h.eq(toks[2], { type = "op", value = ":", line = 1, col = 3 })
+    h.eq(h.without_ends(toks[2]), { type = "op", value = ":", line = 1, col = 3 })
   end)
   h.it("parses a typed value binding", function()
     local e = prog("let count: number = 0").stmts[1]

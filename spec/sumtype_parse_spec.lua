@@ -8,7 +8,7 @@ local function pat(s) return assert(parser.parse("pub let f v = match v with " .
 h.describe("sum type parsing", function()
   h.it("lexes type as a keyword", function()
     local toks = assert(lexer.tokenize("type X"))
-    h.eq(toks[1], { type = "keyword", value = "type", line = 1, col = 1 })
+    h.eq(h.without_ends(toks[1]), { type = "keyword", value = "type", line = 1, col = 1 })
   end)
   h.it("parses a type declaration with named-field + nullary variants", function()
     local d = stmt("type Shape = | Circle { radius } | Rect { width, height } | Origin")
