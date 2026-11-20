@@ -284,10 +284,35 @@ function Parser:parse_primary()
   self:fail("unexpected token '" .. tostring(t.value) .. "'")
 end
 
+local SYNC = { ["let"] = true, ["pub"] = true, ["type"] = true }
+
+-- With self.recover, a failed top-level statement is recorded in self.diags and
+-- parsing resumes at the next column-1 let/pub/type after the statement's first token.
+-- It resumes from the start, not from the error, because a block is a run of lets:
+-- `let x =` with no value reads the top-level lets that follow as its body.
 function Parser:parse_program()
   local stmts = {}
   while not self:at("eof") do
-    stmts[#stmts + 1] = self:parse_statement()
+    if self.recover then
+      local start = self.pos
+      local ok, result = pcall(self.parse_statement, self)
+      if ok then
+        stmts[#stmts + 1] = result
+      elseif self.err then
+        self.diags[#self.diags + 1] = self.err
+        self.err = nil
+        self.pos = start + 1
+        while not self:at("eof") do
+          local t = self:peek()
+          if t.type == "keyword" and SYNC[t.value] and t.col == 1 then break end
+          self.pos = self.pos + 1
+        end
+      else
+        error(result, 0)
+      end
+    else
+      stmts[#stmts + 1] = self:parse_statement()
+    end
   end
   local program = { kind = "program", stmts = stmts, line = 1, col = 1,
                     start_line = 1, start_col = 1, end_line = 1, end_col = 1 }
@@ -601,6 +626,25 @@ function M.parse(source)
   if not toks then return nil, lerr end
   local p = new_parser(toks, source)
   return run(p, function() return p:parse_program() end)
+end
+
+-- Parses as much of source as it can, for editors: never fails on bad input.
+-- Returns { program, tokens, comments, diagnostics }, diagnostics in source order.
+function M.parse_all(source)
+  local lexed = lexer.tokenize(source, { recover = true })
+  local p = new_parser(lexed.tokens, source)
+  p.recover, p.diags = true, {}
+  local program = p:parse_program()
+  local diags = {}
+  for i, d in ipairs(lexed.diagnostics) do diags[#diags + 1] = { d = d, i = i } end
+  for i, d in ipairs(p.diags) do diags[#diags + 1] = { d = d, i = #lexed.diagnostics + i } end
+  table.sort(diags, function(a, b)
+    if a.d.line ~= b.d.line then return a.d.line < b.d.line end
+    if a.d.col ~= b.d.col then return a.d.col < b.d.col end
+    return a.i < b.i
+  end)
+  for i, e in ipairs(diags) do diags[i] = e.d end
+  return { program = program, tokens = lexed.tokens, comments = lexed.comments, diagnostics = diags }
 end
 
 M._Parser = Parser  -- exposed so Task 5 can extend it
