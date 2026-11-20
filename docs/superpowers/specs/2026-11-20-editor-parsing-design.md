@@ -44,9 +44,14 @@ reports every syntax error instead of only the first.
   It uses the lexer's recovering mode. `program` contains every top-level statement
   that parsed.
 - `parse_program` catches the error of each top-level statement on its own. On an
-  error it records the diagnostic, then skips tokens until the next `let`, `pub` or
-  `type` token in column 1, or the end of the file. It always moves forward by at
-  least one token.
+  error it records the diagnostic, then resumes at the first `let`, `pub` or `type`
+  token in column 1 that comes after the failed statement's first token, or at the
+  end of the file.
+- It resumes from the statement's start, not from where the error was found, because
+  the parser does not use layout. A block is a run of `let`s followed by an
+  expression, so `let x =` with nothing after it reads the top-level `let`s that
+  follow as its body, and fails only later. Resuming from the error would lose those
+  statements.
 - The column-1 rule depends on top-level statements starting in column 1, which is how
   all Omelette code in the repository is written. A top-level statement that is
   indented is skipped along with the broken one before it.
@@ -58,11 +63,18 @@ reports every syntax error instead of only the first.
 
 ## Node ranges
 
-- Every syntax tree node gets `end_line` and `end_col`, taken from the last token the
-  node consumed. Nodes already record `line` and `col`.
+- Every syntax tree node gets a range: `start_line`, `start_col`, `end_line`,
+  `end_col`. The start is the node's first token; the end is the end of the last token
+  the node consumed.
+- The existing `line` and `col` stay as they are. They are not always the start: a
+  `binop`, `pipe`, `call`, `field` or `index` node records its operator's position,
+  which is where type errors point. Comprehension `generator` and `guard` nodes have
+  no `line` or `col` and get only the range.
 - Nodes made without consuming tokens of their own (for example `program`, or a
-  `block` that takes its start from its first statement) take their end from their
-  last child.
+  `block` that takes its start from its first statement) take their range from their
+  children.
+- Columns count bytes, as token columns do today. Converting to the editor's column
+  unit is the LSP server's job.
 
 ## Check command
 
@@ -86,7 +98,7 @@ reports every syntax error instead of only the first.
   between and after them are in `program`; recovery always makes progress (a file
   that is all invalid tokens terminates).
 - Node ranges: a test walks the syntax tree of every `.egg` file under `std/`,
-  `spec/fixtures/` and the guide's examples. For each node it checks that the end
-  position exists, that the end is not before the start, and that the node's range
-  lies inside its parent's range.
+  `spec/fixtures/` and the guide's examples. For each node it checks that the range
+  exists, that the end is not before the start, and that the node's range lies inside
+  its parent's range.
 - Check: `omelette check` on a file with two syntax errors prints both.
