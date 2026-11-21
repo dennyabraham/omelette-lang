@@ -3,9 +3,11 @@ local M = {}
 
 local build_std = require("build.build-std")
 
+-- A dotted name is a file in a subdirectory: "lsp.rpc" is omelette/lsp/rpc.lua.
 local MODULES = {
   "lexer", "errors", "resolver", "parser", "codegen", "typecheck",
-  "compiler", "searcher", "repl", "cli", "init",
+  "compiler", "searcher", "repl", "json", "lsp.rpc", "lsp.position", "lsp.tokens",
+  "lsp.server", "cli", "init",
 }
 
 local function read(path)
@@ -19,7 +21,7 @@ function M.build()
   for _, name in ipairs(MODULES) do
     local mod = (name == "init") and "omelette" or ("omelette." .. name)
     parts[#parts + 1] = 'package.preload["' .. mod .. '"] = function(...)'
-    parts[#parts + 1] = read("omelette/" .. name .. ".lua")
+    parts[#parts + 1] = read("omelette/" .. name:gsub("%.", "/") .. ".lua")
     parts[#parts + 1] = "end"
   end
   -- embed the stdlib as package.preload["std.*"] so `require("std.list")` resolves from any

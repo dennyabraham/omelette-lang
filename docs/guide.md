@@ -326,3 +326,15 @@ print(lua "1 + 1")
 INTEROP
 2
 ```
+
+## Editor support
+
+`omelette lsp` runs a language server on stdin and stdout. It reports syntax and
+type errors as you type, and highlights the file with semantic tokens: keywords,
+strings, numbers, comments, operators, types, constructors, functions, parameters,
+fields and variables. After a syntax error it continues at the next top-level `let`,
+`pub` or `type` in column 1, so the rest of the file is still checked.
+
+For Neovim 0.11 or later, install
+[omelette.nvim](https://github.com/dennyabraham/omelette.nvim). It sets the file type
+for `.egg` files and starts the server.
