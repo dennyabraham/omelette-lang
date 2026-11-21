@@ -17,6 +17,14 @@ print(area(Circle { radius = 2 }))   -- 12
 - `omelette run file.egg` — compile and execute.
 - `omelette build file.egg` — compile to Lua and print or write it.
 - `omelette check file.egg` — type-check and report diagnostics.
+- `omelette lsp` — run the language server on stdin/stdout, for editors.
+
+## Editors
+
+Neovim 0.11+: install [omelette.nvim](https://github.com/dennyabraham/omelette.nvim)
+(`{ "dennyabraham/omelette.nvim" }` with lazy.nvim). It needs `omelette` 0.2.0 or
+later on your `PATH`. Other editors can run `omelette lsp` as a language server for
+`.egg` files: it provides diagnostics and semantic tokens.
 
 ## Guide
 
