@@ -29,10 +29,11 @@ function M.eq(a, b)
   if not deep_eq(a, b) then error("expected " .. render(b) .. " got " .. render(a), 2) end
 end
 
-local RANGE_FIELDS = { start_line = true, start_col = true, end_line = true, end_col = true }
+local RANGE_FIELDS = { start_line = true, start_col = true, end_line = true, end_col = true,
+                       name_tok = true, value_name_tok = true, param_toks = true, key_tok = true }
 
--- A deep copy of v without source ranges, for assertions written before tokens and
--- nodes carried them.
+-- A deep copy of v without source ranges and name tokens, for assertions written before
+-- tokens and nodes carried them.
 function M.without_ends(v)
   if type(v) ~= "table" then return v end
   local out = {}
