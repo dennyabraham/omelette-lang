@@ -17,6 +17,19 @@ local PUNCT = { ["("]=true,[")"]=true,["{"]=true,["}"]=true,["["]=true,
 
 local ESCAPES = { n="\n", t="\t", r="\r", ['"']='"', ["\\"]="\\" }
 
+-- The byte length of the UTF-8 character at i, or nil if the bytes there are not one.
+local function utf8_length(s, i)
+  local b = s:byte(i)
+  local len = b < 0x80 and 1 or b >= 0xC2 and b < 0xE0 and 2 or b >= 0xE0 and b < 0xF0 and 3
+              or b >= 0xF0 and b < 0xF5 and 4 or nil
+  if not len then return nil end
+  for k = i + 1, i + len - 1 do
+    local cb = s:byte(k)
+    if not cb or cb < 0x80 or cb >= 0xC0 then return nil end
+  end
+  return len
+end
+
 -- With opts.recover, an error is recorded and lexing continues, and the result is
 -- { tokens, comments, diagnostics }. Without it, the first error is returned.
 function M.tokenize(source, opts)
@@ -106,10 +119,12 @@ function M.tokenize(source, opts)
         advance()
         push("punct", c, line, startcol)
       else
-        local err = errors.new("unexpected character '" .. c .. "'", line, col, source, line, col + 1)
+        local len = utf8_length(source, i)
+        local shown = len and source:sub(i, i + len - 1) or string.format("\\x%02x", c:byte())
+        local err = errors.new("unexpected character '" .. shown .. "'", line, col, source, line, col + (len or 1))
         if not recover then return nil, err end
         diags[#diags + 1] = err
-        advance()
+        for _ = 1, len or 1 do advance() end
       end
     end
   end

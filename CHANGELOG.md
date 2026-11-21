@@ -6,6 +6,7 @@ All notable changes to Omelette are documented here (Keep a Changelog format).
 - `omelette lsp`: a language server over stdio. It sends diagnostics as you type and highlights `.egg` files with semantic tokens. For Neovim, see [omelette.nvim](https://github.com/dennyabraham/omelette.nvim).
 - `omelette check` reports every syntax error in a file, not only the first, then the type errors in the statements that parsed.
 - Positions: a string that spans several lines is now reported at the line where it starts (it was the line where it ends), and an unterminated string's error points at the line where the string starts.
+- A stray non-ASCII character outside a string is reported once, covering the whole character, instead of once per byte. A byte that is not valid UTF-8 is shown as an escape such as `\xff`.
 
 ## [0.1.7]
 - Installed CLI: the LuaRocks launcher is generated with the rock's Lua module directory baked in (and a portable `lua` shebang instead of `luajit`), so an installed `omelette` resolves its own modules and `std.*` without needing `luarocks path` set in the shell.
