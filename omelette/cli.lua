@@ -4,7 +4,7 @@ local lexer = require("omelette.lexer")
 local parser = require("omelette.parser")
 local M = {}
 
-local USAGE = "usage: omelette <build|run|check|repl> [file.egg] [--out path] [--ast] [--tokens] [--no-check]\n"
+local USAGE = "usage: omelette <build|run|check|repl|lsp> [file.egg] [--out path] [--ast] [--tokens] [--no-check]\n"
 
 local function read_file(path)
   local fh = io.open(path, "r")
@@ -109,6 +109,7 @@ function M.main(argv)
   if cmd == "run" then return cmd_run(argv) end
   if cmd == "check" then return cmd_check(argv) end
   if cmd == "repl" then return require("omelette.repl").start() end
+  if cmd == "lsp" then return require("omelette.lsp.server").run(io.stdin, io.stdout) end
   io.write(USAGE)
   return 2
 end
