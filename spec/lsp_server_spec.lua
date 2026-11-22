@@ -214,6 +214,37 @@ h.describe("lsp server", function()
     open(s, 'let s x = "\195\169" .. x')
     h.eq(ask(s, sent, "textDocument/hover", 0, 17).range.start, { line = 0, character = 17 })
   end)
+  local function symbols(s, sent)
+    s:handle({ jsonrpc = "2.0", id = 50, method = "textDocument/documentSymbol",
+               params = { textDocument = { uri = URI } } })
+    h.eq(sent[#sent].id, 50)
+    return sent[#sent].result
+  end
+  h.it("lists the file's symbols", function()
+    local s, sent = start({ "utf-8" })
+    h.eq(sent[1].result.capabilities.documentSymbolProvider, true)
+    open(s, "let f x = x\nlet v = 1\nlet (a, b) = (1, 2)\ntype S = | P | Q")
+    local r = symbols(s, sent)
+    local got = {}
+    for i, sym in ipairs(r) do got[i] = { sym.name, sym.kind } end
+    h.eq(got, { { "f", 12 }, { "v", 13 }, { "a", 13 }, { "b", 13 }, { "S", 10 } })
+    h.eq(r[1].selectionRange, { start = { line = 0, character = 4 }, ["end"] = { line = 0, character = 5 } })
+    h.eq(r[1].range["end"], { line = 0, character = 11 })
+    h.eq(r[3].selectionRange.start, { line = 2, character = 5 })
+    local kids = {}
+    for i, c in ipairs(r[5].children) do kids[i] = { c.name, c.kind } end
+    h.eq(kids, { { "P", 22 }, { "Q", 22 } })
+  end)
+  h.it("gives no symbols for a file it could not check", function()
+    local out
+    local srv = server.new(function(m) if m.id == 50 then out = json.encode(m) end end)
+    srv:handle({ jsonrpc = "2.0", id = 1, method = "initialize", params = { capabilities = {} } })
+    srv:handle({ jsonrpc = "2.0", method = "textDocument/didOpen",
+                 params = { textDocument = { uri = URI, version = 1, text = string.rep("(", 200000) } } })
+    srv:handle({ jsonrpc = "2.0", id = 50, method = "textDocument/documentSymbol",
+                 params = { textDocument = { uri = URI } } })
+    h.truthy(out:find('"result":%[%]'))
+  end)
   h.it("exits 0 after shutdown and 1 without it", function()
     local s, sent = start()
     s:handle({ jsonrpc = "2.0", id = 5, method = "shutdown" })
