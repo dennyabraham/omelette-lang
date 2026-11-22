@@ -47,7 +47,9 @@ encode = function(v, out)
   elseif ty == "boolean" then
     out[#out + 1] = tostring(v)
   elseif ty == "number" then
-    if v == math.floor(v) and math.abs(v) < 2 ^ 53 then
+    if v ~= v or v == math.huge or v == -math.huge then
+      out[#out + 1] = "null" -- JSON has no NaN or infinity
+    elseif v == math.floor(v) and math.abs(v) < 2 ^ 53 then
       out[#out + 1] = string.format("%d", v)
     else
       out[#out + 1] = string.format("%.17g", v)

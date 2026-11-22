@@ -111,6 +111,46 @@ h.describe("lsp server", function()
     s:handle({ jsonrpc = "2.0", method = "$/unknownNotification", params = {} })
     h.eq(#sent, n)
   end)
+  h.it("answers a message that is not an object with invalid request", function()
+    local s, sent = start()
+    for _, m in ipairs({ 5, "x", json.null }) do
+      local n = #sent
+      h.eq(s:handle(m), nil)
+      h.eq(#sent, n + 1)
+      h.eq(sent[#sent].error.code, -32600)
+      h.eq(sent[#sent].id, json.null)
+    end
+  end)
+  h.it("refuses requests after shutdown", function()
+    local s, sent = start()
+    open(s, "let x = 1")
+    s:handle({ jsonrpc = "2.0", id = 5, method = "shutdown" })
+    s:handle({ jsonrpc = "2.0", id = 6, method = "textDocument/semanticTokens/full",
+               params = { textDocument = { uri = URI } } })
+    h.eq(sent[#sent].id, 6)
+    h.eq(sent[#sent].error.code, -32600)
+  end)
+  h.it("answers a frame that is not JSON with a parse error", function()
+    local function frame(body) return "Content-Length: " .. #body .. "\r\n\r\n" .. body end
+    local input = frame("{bad") .. frame('{"jsonrpc":"2.0","method":"exit"}')
+    local pos, written = 1, {}
+    local reader = {
+      read = function(_, what)
+        if what == "*l" then
+          local e = input:find("\n", pos, true)
+          if not e then return nil end
+          local l = input:sub(pos, e - 1); pos = e + 1; return l
+        end
+        local s = input:sub(pos, pos + what - 1); pos = pos + what; return s
+      end,
+    }
+    local writer = { write = function(_, ...) for _, p in ipairs({ ... }) do written[#written + 1] = p end end,
+                     flush = function() end }
+    h.eq(server.run(reader, writer), 1)
+    local out = table.concat(written)
+    h.truthy(out:find('"code":%-32700'))
+    h.truthy(out:find('"id":null'))
+  end)
   h.it("exits 0 after shutdown and 1 without it", function()
     local s, sent = start()
     s:handle({ jsonrpc = "2.0", id = 5, method = "shutdown" })
