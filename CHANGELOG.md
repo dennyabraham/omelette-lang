@@ -2,7 +2,10 @@
 
 All notable changes to Omelette are documented here (Keep a Changelog format).
 
-## [Unreleased]
+## [0.3.0]
+- `omelette lsp` answers hover, go to definition and document symbols. Hover shows a name's type, or its declaration when the type is `any`; on a constructor or a type name it shows the `type` declaration. Definitions are found within the same file.
+- Semantic tokens classify each use of a name by what it refers to: a call of a function is highlighted as a function, a use of a parameter as a parameter.
+- `omelette check` now reports type errors inside comprehensions, which it used to skip.
 - On a line that ends in CRLF, a comment or a cut-off unterminated string no longer includes the `\r`, so its highlight and error range end at the last visible character (#41).
 
 ## [0.2.0]

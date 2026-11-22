@@ -335,6 +335,10 @@ strings, numbers, comments, operators, types, constructors, functions, parameter
 fields and variables. After a syntax error it continues at the next top-level `let`,
 `pub` or `type` in column 1, so the rest of the file is still checked.
 
+The server also answers hover (a name's type, or its declaration), go to definition,
+and an outline of the file's top-level `let`s and `type`s. Definitions are found within
+the same file; a name from another module or a Lua global has none.
+
 For Neovim 0.11 or later, install
 [omelette.nvim](https://github.com/dennyabraham/omelette.nvim). It sets the file type
 for `.egg` files and starts the server.
