@@ -8,6 +8,7 @@ local names = require("omelette.lsp.names")
 local lexer = require("omelette.lexer")
 local parser = require("omelette.parser")
 local typecheck = require("omelette.typecheck")
+local format_type = typecheck.format_type
 
 local M = {}
 local Server = {}
@@ -47,6 +48,7 @@ end
 function Server:update(uri, text)
   local doc = analyse(text)
   doc.pos = position.new(text, self.encoding)
+  doc.text = text
   self.docs[uri] = doc
   if doc.failure then self:log("omelette could not check " .. uri .. ": " .. doc.failure) end
   local out = json.array({})
@@ -73,6 +75,8 @@ function REQUESTS.initialize(self, params)
       positionEncoding = self.encoding,
       textDocumentSync = { openClose = true, change = 1 },
       semanticTokensProvider = { legend = tokens.LEGEND, full = true },
+      hoverProvider = true,
+      definitionProvider = true,
     },
     serverInfo = { name = "omelette", version = require("omelette").version },
   }
@@ -87,6 +91,54 @@ REQUESTS["textDocument/semanticTokens/full"] = function(self, params)
   local doc = self.docs[params.textDocument.uri]
   if not doc then return { data = json.array({}) } end
   return { data = json.array(tokens.encode(doc.parsed, doc.pos, doc.index)) }
+end
+
+-- The name occurrence at a request's position, with its document, or nil.
+local function occurrence(self, params)
+  local doc = self.docs[params.textDocument.uri]
+  if not doc or not doc.index then return nil end
+  local line, col = doc.pos:from_lsp(params.position.line, params.position.character)
+  local occ = names.at(doc.index, line, col)
+  return occ, doc
+end
+
+local function lsp_range(pos, line, col, end_line, end_col)
+  return { start = pos:to_lsp(line, col), ["end"] = pos:to_lsp(end_line, end_col) }
+end
+
+-- Source text from line:col up to end_line:end_col.
+local function slice(pos, line, col, end_line, end_col)
+  local out = {}
+  for l = line, end_line do
+    local s = pos.lines[l] or ""
+    out[#out + 1] = s:sub(l == line and col or 1, l == end_line and end_col - 1 or #s)
+  end
+  return table.concat(out, "\n")
+end
+
+local function hover_text(doc, decl)
+  if decl.kind == "type" or decl.kind == "enumMember" then
+    local n = decl.node
+    return slice(doc.pos, n.start_line, n.start_col, n.end_line, n.end_col)
+  end
+  if decl.type.kind ~= "any" then return decl.name .. " : " .. format_type(decl.type) end
+  return ((doc.pos.lines[decl.line] or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+REQUESTS["textDocument/hover"] = function(self, params)
+  local occ, doc = occurrence(self, params)
+  if not occ then return json.null end
+  return {
+    contents = { kind = "markdown", value = "```omelette\n" .. hover_text(doc, occ.decl) .. "\n```" },
+    range = lsp_range(doc.pos, occ.line, occ.col, occ.line, occ.end_col),
+  }
+end
+
+REQUESTS["textDocument/definition"] = function(self, params)
+  local occ, doc = occurrence(self, params)
+  if not occ then return json.null end
+  local d = occ.decl
+  return { uri = params.textDocument.uri, range = lsp_range(doc.pos, d.line, d.col, d.end_line, d.end_col) }
 end
 
 NOTIFICATIONS.initialized = function() end
