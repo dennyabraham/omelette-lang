@@ -2,12 +2,16 @@ local h = require("spec.support.harness")
 local parser = require("omelette.parser")
 local position = require("omelette.lsp.position")
 local tokens = require("omelette.lsp.tokens")
+local typecheck = require("omelette.typecheck")
+local names = require("omelette.lsp.names")
 
 local TYPES = tokens.LEGEND.tokenTypes
 
 -- Decodes LSP relative token data into absolute { line, char, len, type, decl } rows.
 local function rows(source, encoding)
-  local data = tokens.encode(parser.parse_all(source), position.new(source, encoding or "utf-8"))
+  local parsed = parser.parse_all(source)
+  local _, binding_of = typecheck.check(parsed.program)
+  local data = tokens.encode(parsed, position.new(source, encoding or "utf-8"), names.index(binding_of))
   local out, line, char = {}, 0, 0
   for i = 1, #data, 5 do
     if data[i] > 0 then char = 0 end
@@ -43,7 +47,7 @@ h.describe("lsp semantic tokens", function()
       { 0, 4, 1, "function", true },
       { 0, 6, 1, "parameter", true },
       { 0, 8, 1, "operator", false },
-      { 0, 10, 1, "variable", false },
+      { 0, 10, 1, "parameter", false },
       { 0, 12, 1, "operator", false },
       { 0, 14, 1, "number", false },
     })
@@ -63,6 +67,11 @@ h.describe("lsp semantic tokens", function()
     h.eq(found[11], "type")
     h.eq(found[23], "property")
     h.eq(found[31], "property")
+  end)
+  h.it("classifies uses by their binding", function()
+    local r = rows("let f x = x\nlet y = f(1)")
+    h.eq(r[5], { 0, 10, 1, "parameter", false })
+    h.eq(r[9], { 1, 8, 1, "function", false })
   end)
   h.it("emits comments", function()
     h.eq(rows("-- c\n1")[1], { 0, 0, 4, "comment", false })
