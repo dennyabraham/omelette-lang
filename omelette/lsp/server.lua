@@ -5,6 +5,7 @@ local rpc = require("omelette.lsp.rpc")
 local position = require("omelette.lsp.position")
 local tokens = require("omelette.lsp.tokens")
 local names = require("omelette.lsp.names")
+local symbols = require("omelette.lsp.symbols")
 local lexer = require("omelette.lexer")
 local parser = require("omelette.parser")
 local typecheck = require("omelette.typecheck")
@@ -77,6 +78,7 @@ function REQUESTS.initialize(self, params)
       semanticTokensProvider = { legend = tokens.LEGEND, full = true },
       hoverProvider = true,
       definitionProvider = true,
+      documentSymbolProvider = true,
     },
     serverInfo = { name = "omelette", version = require("omelette").version },
   }
@@ -139,6 +141,12 @@ REQUESTS["textDocument/definition"] = function(self, params)
   if not occ then return json.null end
   local d = occ.decl
   return { uri = params.textDocument.uri, range = lsp_range(doc.pos, d.line, d.col, d.end_line, d.end_col) }
+end
+
+REQUESTS["textDocument/documentSymbol"] = function(self, params)
+  local doc = self.docs[params.textDocument.uri]
+  if not doc then return json.array({}) end
+  return symbols.document(doc.parsed.program, doc.pos)
 end
 
 NOTIFICATIONS.initialized = function() end
