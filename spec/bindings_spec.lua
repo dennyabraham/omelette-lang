@@ -81,3 +81,19 @@ h.describe("bindings", function()
     h.eq(type_of[key_at(type_of, 2, 9, "ident")], { kind = "number" })
   end)
 end)
+
+h.describe("format_type", function()
+  local N, S, B = { kind = "number" }, { kind = "string" }, { kind = "boolean" }
+  local function fun(params, ret) return { kind = "fun", params = params, ret = ret } end
+  h.it("prints primitive types by their kind", function()
+    for _, k in ipairs({ "number", "string", "boolean", "nil", "any" }) do
+      h.eq(typecheck.format_type({ kind = k }), k)
+    end
+  end)
+  h.it("prints function types with their parameters in parentheses", function()
+    h.eq(typecheck.format_type(fun({}, { kind = "any" })), "() -> any")
+    h.eq(typecheck.format_type(fun({ N }, N)), "(number) -> number")
+    h.eq(typecheck.format_type(fun({ N, S }, B)), "(number, string) -> boolean")
+    h.eq(typecheck.format_type(fun({ fun({ N }, N) }, N)), "((number) -> number) -> number")
+  end)
+end)

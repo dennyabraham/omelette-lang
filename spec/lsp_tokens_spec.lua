@@ -28,6 +28,11 @@ h.describe("lsp positions", function()
     h.eq(position.new(src, "utf-8"):to_lsp(1, 16), { line = 0, character = 15 })
     h.eq(position.new(src, "utf-16"):to_lsp(1, 16), { line = 0, character = 14 })
   end)
+  h.it("converts an LSP position back to a byte column", function()
+    local src = 'let s = "é" + x'
+    h.eq({ position.new(src, "utf-16"):from_lsp(0, 14) }, { 1, 16 })
+    h.eq({ position.new(src, "utf-8"):from_lsp(0, 15) }, { 1, 16 })
+  end)
   h.it("counts a character outside the BMP as two UTF-16 units", function()
     local src = 'x\n"\240\159\152\128" y'
     h.eq(position.new(src, "utf-16"):to_lsp(2, 8), { line = 1, character = 5 })

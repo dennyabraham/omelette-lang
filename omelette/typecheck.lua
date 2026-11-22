@@ -42,6 +42,14 @@ end
 
 local function tyname(t) return t.kind == "fun" and "function" or t.kind end
 
+-- A type as source text: `number`, `(number, string) -> boolean`.
+function M.format_type(t)
+  if t.kind ~= "fun" then return t.kind end
+  local params = {}
+  for i, p in ipairs(t.params) do params[i] = M.format_type(p) end
+  return "(" .. table.concat(params, ", ") .. ") -> " .. M.format_type(t.ret)
+end
+
 -- scoped environment
 -- Each scope maps a name to its type (vars) and to the declaration that binds it (decls).
 local function scope(parent) return { vars = {}, decls = {}, parent = parent } end
