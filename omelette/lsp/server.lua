@@ -106,8 +106,18 @@ end
 
 -- Returns an exit code for `exit`, otherwise nil.
 function Server:handle(msg)
+  if type(msg) ~= "table" or msg == json.null then
+    self.send({ jsonrpc = "2.0", id = json.null,
+                error = { code = -32600, message = "a message must be a JSON object" } })
+    return nil
+  end
   if msg.method == "exit" then return self.shut_down and 0 or 1 end
   local is_request = msg.id ~= nil and msg.method ~= nil
+  if is_request and self.shut_down then
+    self.send({ jsonrpc = "2.0", id = msg.id,
+                error = { code = -32600, message = "the server has shut down" } })
+    return nil
+  end
   local handler = (is_request and REQUESTS or NOTIFICATIONS)[msg.method]
   if not handler then
     if is_request then
@@ -135,6 +145,7 @@ function M.run(input, output)
     if not msg then
       if err == "eof" then return 1 end
       s:log(err)
+      s.send({ jsonrpc = "2.0", id = json.null, error = { code = -32700, message = err } })
     else
       local code = s:handle(msg)
       if code then return code end

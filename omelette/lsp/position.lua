@@ -32,6 +32,10 @@ function M:length(line, col, end_col)
   return end_col - col
 end
 
-function M:line_end(line) return #(self.lines[line] or "") + 1 end
+-- The column after a line's last character; a CRLF line's \r is not a character.
+function M:line_end(line)
+  local l = self.lines[line] or ""
+  return #l + (l:sub(-1) == "\r" and 0 or 1)
+end
 
 return M
