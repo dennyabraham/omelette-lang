@@ -55,7 +55,8 @@ function M.tokenize(source, opts)
       advance()
     elseif c == "-" and peek(1) == "-" then
       local sline, scol, start = line, col, i
-      while i <= n and peek() ~= "\n" do advance() end
+      -- a CRLF line's \r is part of the line ending, not the comment
+      while i <= n and peek() ~= "\n" and not (peek() == "\r" and peek(1) == "\n") do advance() end
       comments[#comments + 1] = { text = source:sub(start, i - 1), line = sline, col = scol,
                                   end_line = line, end_col = col }
     elseif c == '"' then
@@ -77,6 +78,7 @@ function M.tokenize(source, opts)
         push("string", table.concat(buf), sline, startcol)
       else
         local eol = source:find("\n", start, true) or (n + 1)
+        if eol > start + 1 and source:sub(eol - 1, eol - 1) == "\r" then eol = eol - 1 end
         local err = errors.new("unterminated string", sline, startcol, source,
           sline, startcol + (eol - start))
         if not recover then return nil, err end

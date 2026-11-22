@@ -2,6 +2,9 @@
 
 All notable changes to Omelette are documented here (Keep a Changelog format).
 
+## [Unreleased]
+- On a line that ends in CRLF, a comment or a cut-off unterminated string no longer includes the `\r`, so its highlight and error range end at the last visible character (#41).
+
 ## [0.2.0]
 - `omelette lsp`: a language server over stdio. It sends diagnostics as you type and highlights `.egg` files with semantic tokens. For Neovim, see [omelette.nvim](https://github.com/dennyabraham/omelette.nvim).
 - `omelette check` reports every syntax error in a file, not only the first, then the type errors in the statements that parsed.
