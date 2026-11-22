@@ -68,9 +68,14 @@ local function add_span(rows, pos, line, col, end_line, end_col, class, decl)
   end
 end
 
-function M.encode(parsed, pos)
+-- index (optional) is a list of name occurrences (lsp/names.lua); a use of a name takes
+-- the class of its declaration.
+function M.encode(parsed, pos, index)
   local names = {}
   classify(parsed.program, names, {})
+  for _, o in ipairs(index or {}) do
+    if not o.is_decl then names[key(o.line, o.col)] = { class = o.decl.kind, decl = false } end
+  end
   local rows = {}
   for _, t in ipairs(parsed.tokens) do
     local class = LEXER_CLASS[t.type]

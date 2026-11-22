@@ -85,6 +85,7 @@ function Checker:decl(name, kind, at, node)
     d = { name = name, kind = kind, line = at.start_line or at.line, col = at.start_col or at.col,
           end_line = at.end_line, end_col = at.end_col, node = node, type = ANY }
     self.decl_at[at] = d
+    self.binding_of[at] = d   -- a declared name binds to its own declaration
   end
   return d
 end

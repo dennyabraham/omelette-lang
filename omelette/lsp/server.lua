@@ -4,6 +4,7 @@ local json = require("omelette.json")
 local rpc = require("omelette.lsp.rpc")
 local position = require("omelette.lsp.position")
 local tokens = require("omelette.lsp.tokens")
+local names = require("omelette.lsp.names")
 local lexer = require("omelette.lexer")
 local parser = require("omelette.parser")
 local typecheck = require("omelette.typecheck")
@@ -29,8 +30,9 @@ local function analyse(text)
     local parsed = parser.parse_all(text)
     local diags = {}
     for _, d in ipairs(parsed.diagnostics) do diags[#diags + 1] = d end
-    for _, d in ipairs(typecheck.check(parsed.program)) do diags[#diags + 1] = d end
-    return { parsed = parsed, diags = diags }
+    local tdiags, binding_of = typecheck.check(parsed.program)
+    for _, d in ipairs(tdiags) do diags[#diags + 1] = d end
+    return { parsed = parsed, diags = diags, index = names.index(binding_of) }
   end)
   if ok then return result end
   local lexed = lexer.tokenize(text, { recover = true })
@@ -84,7 +86,7 @@ end
 REQUESTS["textDocument/semanticTokens/full"] = function(self, params)
   local doc = self.docs[params.textDocument.uri]
   if not doc then return { data = json.array({}) } end
-  return { data = json.array(tokens.encode(doc.parsed, doc.pos)) }
+  return { data = json.array(tokens.encode(doc.parsed, doc.pos, doc.index)) }
 end
 
 NOTIFICATIONS.initialized = function() end
