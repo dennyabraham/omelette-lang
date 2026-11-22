@@ -5,9 +5,8 @@ The prioritized plan for what's next, and an honest record of what's intentional
 Each cycle's spec `Non-Goals` section remains the authoritative detail; this file is the
 map so nothing gets lost between cycles.
 
-_Last updated: 2026-08-30 — shipped the language-deepening batch (functional record update,
-tuples, destructuring `let`, positional constructors, negative-literal patterns) and moved it
-to Shipped; only or-/as-patterns remain of that track._
+_Last updated: 2026-11-21 — shipped editor support in 0.2.0 (`omelette lsp` with diagnostics
+and semantic tokens, and omelette.nvim) and moved it to Shipped; LSP navigation remains._
 
 Legend: **Value** = user-visible payoff · **Effort** = build size · **Fit** = alignment
 with Omelette's thesis (a small, optional/erased, *readable-Lua* ML).
@@ -75,10 +74,12 @@ these are what remains.)
   default output stays erased. _Source: typing-model decision._
 - **Lambda parameter annotations** — lambdas are untyped (`any` params) today.
 - **Custom operators, macros.** _Source: v1 spec._
-- **Editor grammars** — TextMate / tree-sitter for VS Code / Neovim (pairs with the LSP).
-  The **site highlighter + playground editor already shipped** (Prism); this is the remaining
-  editor-integration piece.
-- **Developer tooling** — **LSP**, a **formatter** (`eggfmt`), **`omelette test`** (a thin
+- **LSP navigation** — hover, go to definition and document symbols in `omelette lsp`
+  (sub-project 3 of editor support; spec `docs/superpowers/specs/2026-11-20-lsp-navigation-design.md`).
+- **Editor grammars** — TextMate / tree-sitter for VS Code, and tree-sitter for Neovim
+  highlighting without the server. Neovim already highlights through the LSP's semantic
+  tokens, and the site and playground through Prism.
+- **Developer tooling** — a **formatter** (`eggfmt`), **`omelette test`** (a thin
   busted wrapper), **full source maps** (beyond the light `--[[omelette:LINE]]` comments).
 - **Test / perf infrastructure** — **generative / property-based testing** (random token
   streams never crash the parser; every parseable program emits `load()`-able Lua; parse→emit
@@ -147,6 +148,10 @@ Condensed; the `CHANGELOG.md` and each cycle's spec carry the detail.
 - **Docs & site** — runnable guide (every example CI-verified, 2026-08-16); **static site +
   browser playground, published** at <https://dennyabraham.github.io/omelette-lang/>; prose +
   Tufte/OKLCH styling; **syntax highlighting** (site + playground editor, Prism).
+- **Editor support** (0.2.0, 2026-11-21) — `omelette check` reports every syntax error, not
+  only the first; **`omelette lsp`**, a language server with diagnostics and semantic tokens;
+  the **[omelette.nvim](https://github.com/dennyabraham/omelette.nvim)** plugin for Neovim
+  0.11+.
 - **Release engineering** — CI (LuaJIT + Lua 5.4); single-file amalgam with bundled typecheck;
   tag-triggered releases; **auto-tag-on-version-bump**; **Pages deploy** on push to canon.
 - **Quality fixes** — literal-base field/call wrapping (`prefix()`); `searcher.install()`
