@@ -6,7 +6,7 @@ Each cycle's spec `Non-Goals` section remains the authoritative detail; this fil
 map so nothing gets lost between cycles.
 
 _Last updated: 2026-11-21 — shipped editor support in 0.2.0 (`omelette lsp` with diagnostics
-and semantic tokens, and omelette.nvim) and moved it to Shipped; LSP navigation remains._
+and semantic tokens, and omelette.nvim) and LSP navigation in 0.3.0, and moved both to Shipped._
 
 Legend: **Value** = user-visible payoff · **Effort** = build size · **Fit** = alignment
 with Omelette's thesis (a small, optional/erased, *readable-Lua* ML).
@@ -74,8 +74,6 @@ these are what remains.)
   default output stays erased. _Source: typing-model decision._
 - **Lambda parameter annotations** — lambdas are untyped (`any` params) today.
 - **Custom operators, macros.** _Source: v1 spec._
-- **LSP navigation** — hover, go to definition and document symbols in `omelette lsp`
-  (sub-project 3 of editor support; spec `docs/superpowers/specs/2026-11-20-lsp-navigation-design.md`).
 - **Editor grammars** — TextMate / tree-sitter for VS Code, and tree-sitter for Neovim
   highlighting without the server. Neovim already highlights through the LSP's semantic
   tokens, and the site and playground through Prism.
@@ -151,7 +149,8 @@ Condensed; the `CHANGELOG.md` and each cycle's spec carry the detail.
 - **Editor support** (0.2.0, 2026-11-21) — `omelette check` reports every syntax error, not
   only the first; **`omelette lsp`**, a language server with diagnostics and semantic tokens;
   the **[omelette.nvim](https://github.com/dennyabraham/omelette.nvim)** plugin for Neovim
-  0.11+.
+  0.11+. **Navigation** (0.3.0): hover, go to definition and document symbols, and semantic
+  tokens classified by binding. Definitions in other files are not yet found.
 - **Release engineering** — CI (LuaJIT + Lua 5.4); single-file amalgam with bundled typecheck;
   tag-triggered releases; **auto-tag-on-version-bump**; **Pages deploy** on push to canon.
 - **Quality fixes** — literal-base field/call wrapping (`prefix()`); `searcher.install()`

@@ -7,7 +7,7 @@ local build_std = require("build.build-std")
 local MODULES = {
   "lexer", "errors", "resolver", "parser", "codegen", "typecheck",
   "compiler", "searcher", "repl", "json", "lsp.rpc", "lsp.position", "lsp.tokens",
-  "lsp.server", "cli", "init",
+  "lsp.names", "lsp.symbols", "lsp.server", "cli", "init",
 }
 
 local function read(path)
