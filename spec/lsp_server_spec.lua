@@ -20,6 +20,16 @@ local function open(s, text)
              params = { textDocument = { uri = URI, languageId = "omelette", version = 1, text = text } } })
 end
 
+-- Runs fn while the checker fails, as it does on input the compiler cannot handle.
+local typecheck = require("omelette.typecheck")
+local function while_check_fails(fn)
+  local check = typecheck.check
+  typecheck.check = function() error("stack overflow") end
+  local ok, err = pcall(fn)
+  typecheck.check = check
+  assert(ok, err)
+end
+
 local function last(sent, method)
   for i = #sent, 1, -1 do if sent[i].method == method then return sent[i] end end
 end
@@ -93,7 +103,7 @@ h.describe("lsp server", function()
   end)
   h.it("survives a file it cannot check", function()
     local s, sent = start({ "utf-8" })
-    open(s, string.rep("(", 200000))
+    while_check_fails(function() open(s, "let a = 1") end)
     local d = last(sent, "textDocument/publishDiagnostics").params.diagnostics
     h.eq(#d, 1)
     h.truthy(d[1].message:find("^omelette could not check this file: "))
@@ -225,7 +235,7 @@ h.describe("lsp server", function()
   end)
   h.it("gives null for a file it could not check", function()
     local s, sent = start({ "utf-8" })
-    open(s, string.rep("(", 200000))
+    while_check_fails(function() open(s, "let a = 1") end)
     h.eq(ask(s, sent, "textDocument/hover", 0, 0), json.null)
     h.eq(ask(s, sent, "textDocument/definition", 0, 0), json.null)
   end)
@@ -267,8 +277,10 @@ h.describe("lsp server", function()
     local out
     local srv = server.new(function(m) if m.id == 50 then out = json.encode(m) end end)
     srv:handle({ jsonrpc = "2.0", id = 1, method = "initialize", params = { capabilities = {} } })
-    srv:handle({ jsonrpc = "2.0", method = "textDocument/didOpen",
-                 params = { textDocument = { uri = URI, version = 1, text = string.rep("(", 200000) } } })
+    while_check_fails(function()
+      srv:handle({ jsonrpc = "2.0", method = "textDocument/didOpen",
+                   params = { textDocument = { uri = URI, version = 1, text = "let a = 1" } } })
+    end)
     srv:handle({ jsonrpc = "2.0", id = 50, method = "textDocument/documentSymbol",
                  params = { textDocument = { uri = URI } } })
     h.truthy(out:find('"result":%[%]'))
