@@ -33,6 +33,14 @@ h.describe("typecheck", function()
       'let bad = add(1, "x")',
     }, "\n"), "argument 2")
   end)
+  h.it("names a function type by its signature", function()
+    bad(table.concat({
+      "let apply (f: (number) -> number) (x: number): number = f(x)",
+      "let show (n: number): string = \"\"",
+      "let bad = apply(show, 1)",
+    }, "\n"), "argument 1 expects (number) -> number, got (number) -> string")
+    bad("let f (g: (string) -> string): number = g", "returns (string) -> string, declared number")
+  end)
   h.it("call arity mismatch", function()
     bad(table.concat({
       "let add (x: number) (y: number): number = x + y",
