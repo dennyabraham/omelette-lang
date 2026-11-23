@@ -14,7 +14,7 @@ local Parser = {}
 Parser.__index = Parser
 
 local function new_parser(toks, source)
-  return setmetatable({ toks = toks, pos = 1, source = source, err = nil }, Parser)
+  return setmetatable({ toks = toks, pos = 1, source = source, err = nil, depth = 0 }, Parser)
 end
 
 function Parser:peek() return self.toks[self.pos] end
@@ -47,7 +47,23 @@ function Parser:expect(kind, value)
 end
 
 -- pipe is lowest precedence and left-associative
-function Parser:parse_expr() return self:parse_pipe() end
+-- Expressions, patterns and types nest at most MAX_DEPTH deep, so that deep input is a
+-- parse error rather than a stack overflow here or in the checker and code generator.
+local MAX_DEPTH = 200
+function Parser:enter()
+  self.depth = self.depth + 1
+  if self.depth > MAX_DEPTH then
+    self:fail("nested too deeply (more than " .. MAX_DEPTH .. " levels)")
+  end
+end
+function Parser:leave() self.depth = self.depth - 1 end
+
+function Parser:parse_expr()
+  self:enter()
+  local e = self:parse_pipe()
+  self:leave()
+  return e
+end
 
 function Parser:parse_pipe()
   local left = self:parse_binop(0)
@@ -77,7 +93,9 @@ function Parser:parse_unary()
   local t = self:peek()
   if self:at("op", "-") or self:at("op", "#") or self:at("keyword", "not") then
     self:next()
+    self:enter()
     local operand = self:parse_unary()
+    self:leave()
     return self:finish({ kind = "unop", op = t.value, operand = operand, line = t.line, col = t.col }, t)
   end
   return self:parse_postfix()
@@ -297,6 +315,7 @@ function Parser:parse_program()
   while not self:at("eof") do
     if self.recover then
       local start = self.pos
+      self.depth = 0
       local ok, result = pcall(self.parse_statement, self)
       if ok then
         stmts[#stmts + 1] = result
@@ -621,6 +640,16 @@ function Parser:parse_match()
   end
   if #cases == 0 then self:fail("match needs at least one | case") end
   return self:finish({ kind = "match", subject = subject, cases = cases, line = t.line, col = t.col }, t)
+end
+
+for _, name in ipairs({ "parse_pattern", "parse_type" }) do
+  local parse = Parser[name]
+  Parser[name] = function(self)
+    self:enter()
+    local r = parse(self)
+    self:leave()
+    return r
+  end
 end
 
 local function run(parser, fn)
