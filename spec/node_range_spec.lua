@@ -80,4 +80,26 @@ h.describe("node ranges", function()
       error(#problems .. " problems, first: " .. table.concat(problems, "\n  ", 1, math.min(#problems, 10)))
     end
   end)
+  h.it("every node parse_all keeps from a broken file has a range inside its parent's", function()
+    local broken = {
+      "let a = 1 +\nlet b = a",
+      "let f x = match x with | 1 -> \nlet g = f(2)",
+      "type T = | A | b\nlet v = A",
+      "let s = \"open\nlet t = [x | x <- ]\nlet u = { k => v | k, v <- t",
+      "let r = { p with q = }\nlet (a, b = (1, 2)\nfn x -> \nlet ok = 1",
+      "pub let = 3\nlet z = (1, 2\nlet w = if z then else 1",
+    }
+    local problems = {}
+    for i, src in ipairs(broken) do
+      local r = parser.parse_all(src)
+      h.truthy(#r.diagnostics > 0)
+      check_tree(r.program, nil, "broken " .. i, problems)
+    end
+    for _, src in ipairs({ "x + f(y)[1].z", "fn a -> [a to 3]", "{ k => v | k, v <- t }" }) do
+      check_tree(assert(parser.parse_expr_string(src)), nil, src, problems)
+    end
+    if #problems > 0 then
+      error(#problems .. " problems, first: " .. table.concat(problems, "\n  ", 1, math.min(#problems, 10)))
+    end
+  end)
 end)
