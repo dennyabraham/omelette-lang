@@ -118,13 +118,36 @@ local function slice(pos, line, col, end_line, end_col)
   return table.concat(out, "\n")
 end
 
+local MAX_LINES, MAX_LINE_BYTES = 12, 120
+
+-- Text cut to MAX_LINES lines of at most MAX_LINE_BYTES bytes, with "…" where it was cut.
+-- A line is cut at a character boundary.
+local function cap(text)
+  local out, cut = {}, false
+  for l in (text .. "\n"):gmatch("(.-)\n") do
+    if #out == MAX_LINES then cut = true; break end
+    local line = l
+    if #line > MAX_LINE_BYTES then
+      local n = MAX_LINE_BYTES
+      while n > 0 and line:byte(n + 1) and line:byte(n + 1) >= 0x80 and line:byte(n + 1) < 0xC0 do n = n - 1 end
+      line = line:sub(1, n) .. "…"
+    end
+    out[#out + 1] = line
+  end
+  if cut then out[#out + 1] = "…" end
+  return table.concat(out, "\n")
+end
+
 local function hover_text(doc, decl)
   if decl.kind == "type" or decl.kind == "enumMember" then
     local n = decl.node
-    return slice(doc.pos, n.start_line, n.start_col, n.end_line, n.end_col)
+    return cap(slice(doc.pos, n.start_line, n.start_col, n.end_line, n.end_col))
   end
-  if decl.type.kind ~= "any" then return decl.name .. " : " .. format_type(decl.type) end
-  return ((doc.pos.lines[decl.line] or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+  -- a let of unknown type shows its declaration line; any other name of unknown type is just `any`
+  if decl.type.kind ~= "any" or decl.kind == "parameter" or decl.node.kind ~= "let" then
+    return decl.name .. " : " .. format_type(decl.type)
+  end
+  return cap(((doc.pos.lines[decl.line] or ""):gsub("^%s+", ""):gsub("%s+$", "")))
 end
 
 REQUESTS["textDocument/hover"] = function(self, params)
