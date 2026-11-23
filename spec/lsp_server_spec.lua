@@ -255,6 +255,14 @@ h.describe("lsp server", function()
     for i, c in ipairs(r[5].children) do kids[i] = { c.name, c.kind } end
     h.eq(kids, { { "P", 22 }, { "Q", 22 } })
   end)
+  h.it("gives a constructor's symbol a range over its fields", function()
+    local s, sent = start({ "utf-8" })
+    open(s, "type S = | P { a, b } | Q(x, y)")
+    local kids = symbols(s, sent)[1].children
+    h.eq(kids[1].range, { start = { line = 0, character = 11 }, ["end"] = { line = 0, character = 21 } })
+    h.eq(kids[1].selectionRange, { start = { line = 0, character = 11 }, ["end"] = { line = 0, character = 12 } })
+    h.eq(kids[2].range, { start = { line = 0, character = 24 }, ["end"] = { line = 0, character = 31 } })
+  end)
   h.it("gives no symbols for a file it could not check", function()
     local out
     local srv = server.new(function(m) if m.id == 50 then out = json.encode(m) end end)
