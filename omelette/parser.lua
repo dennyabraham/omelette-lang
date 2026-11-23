@@ -463,7 +463,7 @@ function Parser:parse_type_decl()
         repeat self:expect("ident"); arity = arity + 1 until not self:accept_comma()
       end
       self:expect("punct", ")")
-      variants[#variants + 1] = { name = cname.value, name_tok = cname, positional = true, arity = arity }
+      variants[#variants + 1] = self:finish({ name = cname.value, name_tok = cname, positional = true, arity = arity }, cname)
     else
       local vfields = {}
       if self:at("punct", "{") then
@@ -473,7 +473,7 @@ function Parser:parse_type_decl()
         end
         self:expect("punct", "}")
       end
-      variants[#variants + 1] = { name = cname.value, name_tok = cname, fields = vfields }
+      variants[#variants + 1] = self:finish({ name = cname.value, name_tok = cname, fields = vfields }, cname)
     end
   until not (self:at("punct", "|") and self:next())
   return self:finish({ kind = "type_decl", name = name, name_tok = name_tok, is_pub = is_pub, variants = variants,

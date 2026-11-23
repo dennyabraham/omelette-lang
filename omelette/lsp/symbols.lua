@@ -34,7 +34,7 @@ function M.document(program, pos)
     elseif node.kind == "type_decl" then
       local members = {}
       for _, v in ipairs(node.variants) do
-        members[#members + 1] = symbol(pos, v.name, ENUM_MEMBER, v.name_tok, v.name_tok)
+        members[#members + 1] = symbol(pos, v.name, ENUM_MEMBER, v, v.name_tok)
       end
       out[#out + 1] = symbol(pos, node.name, ENUM, node, node.name_tok, members)
     end
