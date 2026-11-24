@@ -84,7 +84,7 @@ function M.tokenize(source, opts)
         if not recover then return nil, err end
         diags[#diags + 1] = err
         -- end the string at the end of its first line so the following lines still lex
-        local text = source:sub(start + 1, eol - 1)
+        local text = source:sub(start + 1, eol - 1):gsub("\\(.)", function(e) return ESCAPES[e] or e end)
         i, line, col = start, sline, startcol
         while i < eol do advance() end
         push("string", text, sline, startcol)
