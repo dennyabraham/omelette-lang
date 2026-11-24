@@ -5,8 +5,8 @@ The prioritized plan for what's next, and an honest record of what's intentional
 Each cycle's spec `Non-Goals` section remains the authoritative detail; this file is the
 map so nothing gets lost between cycles.
 
-_Last updated: 2026-11-21 — shipped editor support in 0.2.0 (`omelette lsp` with diagnostics
-and semantic tokens, and omelette.nvim) and LSP navigation in 0.3.0, and moved both to Shipped._
+_Last updated: 2026-11-23 — moved comprehension checking and function-type diagnostics to
+Shipped; LuaRocks publishing works (0.2.0 onward)._
 
 Legend: **Value** = user-visible payoff · **Effort** = build size · **Fit** = alignment
 with Omelette's thesis (a small, optional/erased, *readable-Lua* ML).
@@ -40,10 +40,7 @@ these are what remains.)
   - **Bidirectional branch checking** — `if`/`match` branches currently join to `any`, so a
     knowable mismatch against a declared return type is under-reported; check branches against
     the expected type.
-  - **Walk comprehension / range / dict-comp bodies** — currently synthesize to `any` without
-    recursing, so an operator mismatch inside a yield is missed (never a false positive).
-  - **Better function-type diagnostics** — `tyname` collapses all `fun` types to `"function"`;
-    render the signature. _Source: optional-typing cycle-1 reviews._
+  _Source: optional-typing cycle-1 reviews._
 
 - **Generics / parametric variants** — `type Option(a) = Some { value: a } | None`, **type
   aliases**, and **constructors as first-class function values** (construction is inlined
@@ -54,13 +51,12 @@ these are what remains.)
   non-exhaustive), **redundant / unreachable-arm warnings**, and a **`warning` severity** in
   the diagnostic model (today diagnostics are errors-only). _Source: sum-types designs._
 
-- **LuaRocks: verify + publish** — now unblocked (repo is public):
+- **LuaRocks: verify** — releases publish to LuaRocks on each version tag; what remains:
   - **End-to-end verification** — exercise the rockspec's command build via a real `luarocks
     build` / `install` in CI (today it's only structurally validated). Confirm the installed
     `bin/omelette` resolves `omelette.*` / `std.*` on a clean machine (its `package.path` and
     `#!/usr/bin/env luajit` shebang are repo/luajit-oriented).
-  - **Publish** — set the `LUAROCKS_API_KEY` secret; the release workflow's upload step is
-    already gated on it (fires on the next tag). _Source: 2026-08-24 stdlib-distribution spec._
+  _Source: 2026-08-24 stdlib-distribution spec._
 
 - **Site follow-ups** — tune the inherited **dark mode** to the OKLCH accents; a fuller
   **visual identity** (logo / favicon). _Source: docs-prose-tufte spec._
@@ -140,6 +136,8 @@ Condensed; the `CHANGELOG.md` and each cycle's spec carry the detail.
   `let (a, b) = t` (irrefutable; block, top-level, and `pub`); **negative-literal patterns**
   `| -1 ->`.
 - **Types** — optional, erased type annotations with opt-in `omelette check` (2026-07-21).
+  The checker walks comprehension, range and dict-comprehension bodies (0.3.0), and errors
+  name function types by their signature, such as `(number) -> number`.
 - **Recursion** — top-level forward references / mutual recursion; `pub let` recursion-by-name.
 - **Standard library** — `std.list` / `std.string` / `std.table` (incl. `merge`); **bundled
   self-contained** into the binary + a LuaRocks command build (2026-08-24).
