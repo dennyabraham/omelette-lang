@@ -2,6 +2,13 @@
 
 All notable changes to Omelette are documented here (Keep a Changelog format).
 
+## [Unreleased]
+- Type errors name a function type by its signature, such as `(number) -> number`, instead of `function`.
+- Hover text is cut to 12 lines of 120 bytes. Hover on a parameter or pattern variable of unknown type shows `x : any` instead of its declaration line (#50, #52).
+- In the outline, a constructor's range covers its fields, not only its name (#51).
+- Nesting more than 200 levels deep is reported as a syntax error instead of overflowing the stack; the editor keeps the statements around it (#44).
+- An unterminated string's escapes are processed, as in a terminated string (#42).
+
 ## [0.3.0]
 - `omelette lsp` answers hover, go to definition and document symbols. Hover shows a name's type, or its declaration when the type is `any`; on a constructor or a type name it shows the `type` declaration. Definitions are found within the same file.
 - Semantic tokens classify each use of a name by what it refers to: a call of a function is highlighted as a function, a use of a parameter as a parameter.
