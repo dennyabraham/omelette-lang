@@ -5,6 +5,7 @@ local parser = require("omelette.parser")
 local M = {}
 
 local USAGE = "usage: omelette <build|run|check|repl|lsp> [file.egg] [--out path] [--ast] [--tokens] [--no-check]\n"
+  .. "       omelette --version\n"
 
 local function read_file(path)
   local fh = io.open(path, "r")
@@ -110,6 +111,10 @@ function M.main(argv)
   if cmd == "check" then return cmd_check(argv) end
   if cmd == "repl" then return require("omelette.repl").start() end
   if cmd == "lsp" then return require("omelette.lsp.server").run(io.stdin, io.stdout) end
+  if cmd == "--version" or cmd == "-v" then
+    io.write("omelette " .. require("omelette").version .. "\n")
+    return 0
+  end
   io.write(USAGE)
   return 2
 end

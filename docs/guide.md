@@ -9,6 +9,7 @@ Work with `.egg` files through the CLI:
 - `omelette run file.egg` — compile and execute.
 - `omelette build file.egg` — compile to Lua and print or write it.
 - `omelette check file.egg` — type-check and report diagnostics.
+- `omelette --version` — print the version.
 
 ## Values and bindings
 

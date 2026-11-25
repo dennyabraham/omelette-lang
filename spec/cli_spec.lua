@@ -29,6 +29,16 @@ h.describe("cli", function()
     h.truthy(code ~= 0)
     h.truthy(out:find("error"))
   end)
+  h.it("--version prints the version and exits 0", function()
+    local version = require("omelette").version
+    for _, flag in ipairs({ "--version", "-v" }) do
+      local code, out = capture(function() return cli.main({ flag }) end)
+      h.eq(code, 0)
+      h.eq(out, "omelette " .. version .. "\n")
+    end
+    local _, usage = capture(function() return cli.main({}) end)
+    h.truthy(usage:find("--version", 1, true))
+  end)
   h.it("prints usage for unknown command", function()
     local code, out = capture(function() return cli.main({ "frobnicate" }) end)
     h.truthy(code ~= 0)

@@ -53,6 +53,9 @@ h.describe("amalgamate", function()
     h.truthy(not bad:find("not found", 1, true))   -- NOT a missing-module crash
     h.truthy(bad:find("EXIT=1", 1, true))          -- non-zero exit on a type error
     h.truthy(run("ok.egg"):find("EXIT=0", 1, true))  -- clean program exits 0
+    local p = io.popen('cd "' .. dir .. '" && "' .. interp .. '" omelette --version 2>&1; echo EXIT=$?')
+    local version = p:read("*a"); p:close()
+    h.eq(version, "omelette " .. require("omelette").version .. "\nEXIT=0\n")
     os.execute('rm -rf "' .. dir .. '"')
   end)
 
