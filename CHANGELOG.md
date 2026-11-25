@@ -3,6 +3,7 @@
 All notable changes to Omelette are documented here (Keep a Changelog format).
 
 ## [Unreleased]
+- `omelette --version` (or `-v`) prints the version.
 - Type errors name a function type by its signature, such as `(number) -> number`, instead of `function`.
 - Hover text is cut to 12 lines of 120 bytes. Hover on a parameter or pattern variable of unknown type shows `x : any` instead of its declaration line (#50, #52).
 - In the outline, a constructor's range covers its fields, not only its name (#51).

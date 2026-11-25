@@ -17,6 +17,7 @@ print(area(Circle { radius = 2 }))   -- 12
 - `omelette run file.egg` — compile and execute.
 - `omelette build file.egg` — compile to Lua and print or write it.
 - `omelette check file.egg` — type-check and report diagnostics.
+- `omelette --version` — print the version.
 - `omelette lsp` — run the language server on stdin/stdout, for editors.
 
 ## Editors
