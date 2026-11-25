@@ -58,22 +58,13 @@ these are what remains.)
     `#!/usr/bin/env luajit` shebang are repo/luajit-oriented).
   _Source: 2026-08-24 stdlib-distribution spec._
 
-- **Tree-sitter grammar** — _Value: Medium · Effort: Medium (about 3–5 days) · Fit: Good._
-  A `tree-sitter-omelette` repository, and omelette.nvim highlighting through it:
-  - `grammar.js` ported from the parser. The syntax has no layout rules, so no external
-    scanner. The likely hard part is precedence conflicts: nested `match` arms,
-    `Some(3)` against `f(3)`, and a `let` whose value is a block.
-  - Tests: a tree-sitter corpus, and CI that parses every `.egg` file in the repository
-    (`std/`, fixtures, the guide's examples) with no ERROR nodes.
-  - Queries: `highlights.scm`, a Lua injection for `lua "..."`, and possibly folds and
-    indents.
-  - omelette.nvim ships the queries and registers the parser; users install it
-    through nvim-treesitter (a PR to their parser list) or build it themselves.
-  - The same grammar works in Helix and Zed.
-
-  Do it after optional typing cycle 2 and or/as-patterns, which add syntax (`[T]`,
-  `{ x: T }`, field types, `|` and `as` in patterns), so the grammar is written against
-  syntax that has settled. Every later syntax change needs a grammar change too.
+- **Tree-sitter grammar** — _Value: Medium · Effort: Medium · Fit: Good._ A
+  `tree-sitter-omelette` repository, and omelette.nvim highlighting through it:
+  - `grammar.js` ported from the parser, with a tree-sitter test corpus and CI that parses
+    every `.egg` file in the repository with no ERROR nodes.
+  - Queries: `highlights.scm` and a Lua injection for `lua "..."`.
+  - omelette.nvim ships the queries and registers the parser.
+  - After optional typing cycle 2 and or/as-patterns, which add syntax.
 
 - **Site follow-ups** — tune the inherited **dark mode** to the OKLCH accents; a fuller
   **visual identity** (logo / favicon). _Source: docs-prose-tufte spec._
