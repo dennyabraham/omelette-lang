@@ -5,33 +5,15 @@ The prioritized plan for what's next, and an honest record of what's intentional
 Each cycle's spec `Non-Goals` section remains the authoritative detail; this file is the
 map so nothing gets lost between cycles.
 
-_Last updated: 2026-11-25 — added the tree-sitter grammar to Soon, after optional typing
-cycle 2 and or/as-patterns._
+_Last updated: 2026-11-26 — optional typing cycle 2 moved to Now / Next; or/as-patterns
+moved to Soon, before LuaRocks verification._
 
 Legend: **Value** = user-visible payoff · **Effort** = build size · **Fit** = alignment
 with Omelette's thesis (a small, optional/erased, *readable-Lua* ML).
 
 ---
 
-## Now / Next — language deepening
-
-The highest-leverage growth, much of it surfaced by comparing against Amulet and OCaml. These
-are syntax + codegen + checker work — no type-theory — so they extend the language without
-changing its erased, readable-output character. (Five items shipped in 2026-08 — see Shipped;
-these are what remains.)
-
-- **Pattern-matching extras (remainder)** — _Value: Medium · Effort: Low._ Negative-literal
-  patterns shipped; these are the rest:
-  - **Or-patterns** — `| Circle _ | Square _ ->`, `| 0 | 1 ->`. Cycle 1 = test-only
-    (alternatives bind no variables).
-  - **As-patterns** — `[a, b] as whole`, `Some(v) as opt` (`pattern as name`, ML-style).
-  - Lower priority: record **key-presence testing** (absent fields bind `nil` by design),
-    **non-linear/hygiene** (`[a, a]` is last-wins), and delimiting a **greedy nested
-    `match`/`if` arm** without parentheses. _Source: 2026-08-02 pattern-matching reviews._
-
----
-
-## Soon — types, checker, distribution
+## Now / Next — optional typing, cycle 2
 
 - **Optional typing, cycle 2** — deepen the erased checker (never blocks runtime):
   - **Collection types** `[T]` / `{ x: T }`, and typing the stdlib.
@@ -42,6 +24,10 @@ these are what remains.)
     the expected type.
   _Source: optional-typing cycle-1 reviews._
 
+---
+
+## Soon — types, checker, patterns, distribution
+
 - **Generics / parametric variants** — `type Option(a) = Some { value: a } | None`, **type
   aliases**, and **constructors as first-class function values** (construction is inlined
   today). Since types are erased, this is mostly a *checker + annotation* feature. _Value:
@@ -50,6 +36,15 @@ these are what remains.)
 - **Sum-type checker depth** — **Rust-strict guards** (a guarded-only constructor is
   non-exhaustive), **redundant / unreachable-arm warnings**, and a **`warning` severity** in
   the diagnostic model (today diagnostics are errors-only). _Source: sum-types designs._
+
+- **Pattern-matching extras (remainder)** — _Value: Medium · Effort: Low._ Negative-literal
+  patterns shipped; these are the rest:
+  - **Or-patterns** — `| Circle _ | Square _ ->`, `| 0 | 1 ->`. Cycle 1 = test-only
+    (alternatives bind no variables).
+  - **As-patterns** — `[a, b] as whole`, `Some(v) as opt` (`pattern as name`, ML-style).
+  - Lower priority: record **key-presence testing** (absent fields bind `nil` by design),
+    **non-linear/hygiene** (`[a, a]` is last-wins), and delimiting a **greedy nested
+    `match`/`if` arm** without parentheses. _Source: 2026-08-02 pattern-matching reviews._
 
 - **LuaRocks: verify** — releases publish to LuaRocks on each version tag; what remains:
   - **End-to-end verification** — exercise the rockspec's command build via a real `luarocks
