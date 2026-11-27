@@ -1,7 +1,7 @@
 # Omelette — Branch Checking Design
 
 **Date:** 2026-11-26
-**Status:** Draft, for review
+**Status:** Approved design, pre-implementation
 **Part of:** optional typing cycle 2, sub-project 1 of 3 (then constructor field types,
 then list and record types with the standard library).
 
