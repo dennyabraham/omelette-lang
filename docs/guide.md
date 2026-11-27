@@ -254,6 +254,15 @@ let x: number = "hi"
 'x' is declared number but assigned string
 ```
 
+Each branch of an `if` or `match` is checked against the declared type:
+
+```egg
+let sign (x: number): number = if x > 0 then 1 else "negative"
+```
+```error
+else branch is string, declared number
+```
+
 On a declared sum type, `match` must cover every constructor. Miss one and the
 checker names it:
 

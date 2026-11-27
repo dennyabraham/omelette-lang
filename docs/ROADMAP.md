@@ -5,8 +5,8 @@ The prioritized plan for what's next, and an honest record of what's intentional
 Each cycle's spec `Non-Goals` section remains the authoritative detail; this file is the
 map so nothing gets lost between cycles.
 
-_Last updated: 2026-11-26 — optional typing cycle 2 moved to Now / Next; or/as-patterns
-moved to Soon, before LuaRocks verification._
+_Last updated: 2026-11-27 — branch checking shipped; optional types added to optional
+typing cycle 2._
 
 Legend: **Value** = user-visible payoff · **Effort** = build size · **Fit** = alignment
 with Omelette's thesis (a small, optional/erased, *readable-Lua* ML).
@@ -16,12 +16,12 @@ with Omelette's thesis (a small, optional/erased, *readable-Lua* ML).
 ## Now / Next — optional typing, cycle 2
 
 - **Optional typing, cycle 2** — deepen the erased checker (never blocks runtime):
+  - **Optional types** — `number?` for a value that may be `nil`. `std/list.egg`'s `min`,
+    `max`, `find` and `index_of` return `nil` when there is nothing to return, so they need
+    it before the standard library is typed.
   - **Collection types** `[T]` / `{ x: T }`, and typing the stdlib.
   - **Field type annotations** in sum-type declarations (`Circle { radius: number }`), then
     type `construct` / `ctor_pat` payloads against them.
-  - **Bidirectional branch checking** — `if`/`match` branches currently join to `any`, so a
-    knowable mismatch against a declared return type is under-reported; check branches against
-    the expected type.
   _Source: optional-typing cycle-1 reviews._
 
 ---
@@ -139,7 +139,9 @@ Condensed; the `CHANGELOG.md` and each cycle's spec carry the detail.
   `| -1 ->`.
 - **Types** — optional, erased type annotations with opt-in `omelette check` (2026-07-21).
   The checker walks comprehension, range and dict-comprehension bodies (0.3.0), and errors
-  name function types by their signature, such as `(number) -> number`.
+  name function types by their signature, such as `(number) -> number`. `if` branches and
+  `match` arms are checked against a declared return type, value annotation or annotated
+  parameter.
 - **Recursion** — top-level forward references / mutual recursion; `pub let` recursion-by-name.
 - **Standard library** — `std.list` / `std.string` / `std.table` (incl. `merge`); **bundled
   self-contained** into the binary + a LuaRocks command build (2026-08-24).

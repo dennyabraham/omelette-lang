@@ -2,6 +2,9 @@
 
 All notable changes to Omelette are documented here (Keep a Changelog format).
 
+## [Unreleased]
+- `omelette check` reports an `if` branch or `match` arm whose type doesn't fit a declared return type, value annotation or annotated parameter, such as `else branch is string, declared number`. It used to give the whole `if` or `match` the type `any`.
+
 ## [0.3.1]
 - `omelette --version` (or `-v`) prints the version.
 - Type errors name a function type by its signature, such as `(number) -> number`, instead of `function`.
