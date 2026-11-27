@@ -442,10 +442,15 @@ end
 
 function Checker:synth_call(fnnode, args, callnode, env)
   local ft = self:synth(fnnode, env)
-  local argtypes, has_hole = {}, false
-  for _, a in ipairs(args) do
-    if a.kind == "hole" then has_hole = true; argtypes[#argtypes + 1] = ANY
-    else argtypes[#argtypes + 1] = self:synth(a, env) end
+  local has_hole = false
+  for _, a in ipairs(args) do if a.kind == "hole" then has_hole = true end end
+  -- a call that is argument-checked checks each argument against its parameter
+  local checked = ft.kind == "fun" and not has_hole and #args == #ft.params
+  local argtypes = {}
+  for i, a in ipairs(args) do
+    if a.kind == "hole" then argtypes[i] = ANY
+    elseif checked then argtypes[i] = self:check_against(a, env, { type = ft.params[i], arg = i })
+    else argtypes[i] = self:synth(a, env) end
   end
   if ft.kind ~= "fun" or has_hole then return ft.kind == "fun" and ft.ret or ANY end
   if #argtypes ~= #ft.params then

@@ -93,3 +93,26 @@ h.describe("branch checking against annotations", function()
       { "arithmetic '+' expects number, got string" })
   end)
 end)
+
+h.describe("branch checking against parameters", function()
+  local G = "let g (n: number): number = n\n"
+  h.it("reports a wrong branch passed to an annotated parameter", function()
+    one_error(G .. 'let r (c: boolean) = g(if c then 1 else "a")',
+      "else branch is string, argument 1 expects number", '"a"')
+  end)
+  h.it("checks a piped value as argument 1, and the call's own arguments after it", function()
+    one_error(G .. 'let r (c: boolean) = (if c then 1 else "a") |> g',
+      "else branch is string, argument 1 expects number", '"a"')
+    one_error('let h (a: string) (n: number): number = n\nlet r (c: boolean) = "s" |> h(if c then 1 else "a")',
+      "else branch is string, argument 2 expects number", '"a"')
+  end)
+  h.it("leaves a call with a hole or the wrong argument count to the existing checks", function()
+    local ADD = "let add (x: number) (y: number): number = x + y\n"
+    clean(ADD .. 'let r (c: boolean) = add(_, if c then 1 else "a")')
+    h.eq(messages(ADD .. 'let r (c: boolean) = add(if c then 1 else "a")'),
+      { "call expects 2 argument(s), got 1" })
+  end)
+  h.it("keeps the argument message for an argument that is not a branch", function()
+    one_error(G .. 'let r = g("a")', "argument 1 expects number, got string", '"a"')
+  end)
+end)
