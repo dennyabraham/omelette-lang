@@ -321,11 +321,7 @@ function Checker:synth_node(node, env)
     self:synth(node.subject, env)
     local ty
     for _, c in ipairs(node.cases) do
-      self:validate_pattern(c.pattern, node)
-      local s = scope(env)
-      self:declare_pattern(c.pattern, s)
-      if c.guard then self:synth(c.guard, s) end
-      local bt = self:synth(c.body, s)
+      local bt = self:synth(c.body, self:enter_case(c, node, env))
       if ty == nil then ty = bt elseif ty.kind ~= bt.kind then ty = ANY end
     end
     self:check_exhaustive(node)
@@ -399,6 +395,51 @@ function Checker:synth_node(node, env)
   return ANY
 end
 
+-- The scope a match arm's body runs in, after the arm's pattern and guard are checked.
+function Checker:enter_case(c, node, env)
+  self:validate_pattern(c.pattern, node)
+  local s = scope(env)
+  self:declare_pattern(c.pattern, s)
+  if c.guard then self:synth(c.guard, s) end
+  return s
+end
+
+-- Checks node against a declared type, want.type, going into `if` branches, `match` arms
+-- and a block's final expression. want.arg is the argument number when the type is a
+-- parameter's. branch names the innermost `if` or `match` branch on the way down (nil
+-- above the first one); an expression in a branch that doesn't fit is reported there.
+-- Returns want.type for an `if` or `match`, so the caller's own check passes, and the
+-- expression's own type otherwise.
+function Checker:check_against(node, env, want, branch)
+  local k, t = node.kind, nil
+  if k == "if" then
+    self:synth(node.cond, env)
+    self:check_against(node.then_branch, env, want, "then branch")
+    self:check_against(node.else_branch, env, want, "else branch")
+    t = want.type
+  elseif k == "match" then
+    self:synth(node.subject, env)
+    for _, c in ipairs(node.cases) do
+      self:check_against(c.body, self:enter_case(c, node, env), want, "match arm")
+    end
+    self:check_exhaustive(node)
+    t = want.type
+  elseif k == "block" then
+    local s = scope(env)
+    for _, st in ipairs(node.stmts) do self:check_binding(st, s) end
+    t = self:check_against(node.result, s, want, branch)
+  else
+    t = self:synth(node, env)
+    if branch and not consistent(t, want.type) then
+      local expected = want.arg and ("argument " .. want.arg .. " expects ") or "declared "
+      self:err(branch .. " is " .. tyname(t) .. ", " .. expected .. tyname(want.type), node)
+    end
+    return t
+  end
+  self.type_of[node] = t
+  return t
+end
+
 function Checker:synth_call(fnnode, args, callnode, env)
   local ft = self:synth(fnnode, env)
   local argtypes, has_hole = {}, false
@@ -440,9 +481,9 @@ function Checker:check_binding(node, env)
         tok and self:decl(node.params[i], "parameter", tok, node))
     end
     local mark = #self.diags
-    local bodyt = self:synth(node.value, s)
-    if node.ret_type then
-      local rt = to_type(node.ret_type)
+    local rt = node.ret_type and to_type(node.ret_type)
+    local bodyt = rt and self:check_against(node.value, s, { type = rt }) or self:synth(node.value, s)
+    if rt then
       if not consistent(bodyt, rt) then
         -- insert ahead of any diagnostics the body synth itself produced (e.g. an
         -- operand-type error inside the returned expression), so the return-type
@@ -453,9 +494,9 @@ function Checker:check_binding(node, env)
       end
     end
   else
-    local vt = self:synth(node.value, env)
-    if node.value_type then
-      local dt = to_type(node.value_type)
+    local dt = node.value_type and to_type(node.value_type)
+    local vt = dt and self:check_against(node.value, env, { type = dt }) or self:synth(node.value, env)
+    if dt then
       if not consistent(vt, dt) then
         self:err("'" .. node.name .. "' is declared " .. tyname(dt) .. " but assigned " .. tyname(vt), node)
       end
