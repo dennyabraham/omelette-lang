@@ -80,6 +80,16 @@ h.describe("branch checking against annotations", function()
   h.it("accepts lambda branches against a function type", function()
     clean("let mk (b: boolean): (number) -> number = if b then fn x -> x else fn x -> x + 1")
   end)
+  h.it("reports a lambda branch's body against the declared return type", function()
+    one_error('let mk (b: boolean): (number) -> number = if b then fn x -> "a" else fn x -> x',
+      "then branch returns string, declared (number) -> number", '"a"')
+    one_error('let mk (b: boolean): (number) -> number = if b then fn x -> x else fn x -> (if x > 0 then x else "n")',
+      "else branch is string, declared number", '"n"')
+  end)
+  h.it("reports a lambda branch with the wrong parameter count by its whole type", function()
+    one_error("let mk (b: boolean): (number) -> number = if b then fn x y -> x else fn x -> x",
+      "then branch is (any, any) -> any, declared (number) -> number", "fn x y")
+  end)
   h.it("leaves unannotated branches that disagree alone", function()
     clean('let c = true\nlet y = if c then 1 else "a"')
     clean('let m v = match v with | 1 -> 1 | _ -> "x"')
@@ -111,6 +121,12 @@ h.describe("branch checking against parameters", function()
     clean(ADD .. 'let r (c: boolean) = add(_, if c then 1 else "a")')
     h.eq(messages(ADD .. 'let r (c: boolean) = add(if c then 1 else "a")'),
       { "call expects 2 argument(s), got 1" })
+  end)
+  h.it("reports a lambda branch's body against a function parameter", function()
+    one_error('let ap (f: (number) -> number) = f(1)\nlet r (c: boolean) = ap(if c then fn x -> "a" else fn x -> x)',
+      "then branch returns string, argument 1 expects (number) -> number", '"a"')
+    one_error('let ap (f: (number) -> number) = f(1)\nlet r (c: boolean) = ap(if c then fn x -> x else fn x -> (if x > 0 then x else "n"))',
+      "else branch is string, declared number", '"n"')
   end)
   h.it("keeps the argument message for an argument that is not a branch", function()
     one_error(G .. 'let r = g("a")', "argument 1 expects number, got string", '"a"')

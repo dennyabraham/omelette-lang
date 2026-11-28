@@ -302,13 +302,7 @@ function Checker:synth_node(node, env)
     return self:synth_call(rhs, { node.lhs }, node, env)
   end
   if k == "lambda" then
-    local s = scope(env)
-    local params = {}
-    for i, p in ipairs(node.params) do
-      local tok = node.param_toks and node.param_toks[i]
-      self:declare(s, p, ANY, tok and self:decl(p, "parameter", tok, node))
-      params[#params + 1] = ANY
-    end
+    local s, params = self:lambda_scope(node, env)
     return { kind = "fun", params = params, ret = self:synth(node.body, s) }
   end
   if k == "if" then
@@ -395,6 +389,18 @@ function Checker:synth_node(node, env)
   return ANY
 end
 
+-- The scope a lambda's body runs in, and its parameter types (all `any`).
+function Checker:lambda_scope(node, env)
+  local s = scope(env)
+  local params = {}
+  for i, p in ipairs(node.params) do
+    local tok = node.param_toks and node.param_toks[i]
+    self:declare(s, p, ANY, tok and self:decl(p, "parameter", tok, node))
+    params[#params + 1] = ANY
+  end
+  return s, params
+end
+
 -- The scope a match arm's body runs in, after the arm's pattern and guard are checked.
 function Checker:enter_case(c, node, env)
   self:validate_pattern(c.pattern, node)
@@ -408,19 +414,24 @@ end
 -- and a block's final expression. want.arg is the argument number when the type is a
 -- parameter's. branch names the innermost `if` or `match` branch on the way down (nil
 -- above the first one); an expression in a branch that doesn't fit is reported there.
+-- A lambda in a branch, with as many parameters as the declared function type, has its
+-- body checked against the declared return type; want.whole is then that function type,
+-- and a body that doesn't fit is reported as what the branch returns.
 -- Returns want.type for an `if` or `match`, so the caller's own check passes, and the
 -- expression's own type otherwise.
 function Checker:check_against(node, env, want, branch)
   local k, t = node.kind, nil
+  -- inside a lambda's body the type is the lambda's return type, not the argument's
+  local inner = { type = want.type, arg = not want.whole and want.arg or nil }
   if k == "if" then
     self:synth(node.cond, env)
-    self:check_against(node.then_branch, env, want, "then branch")
-    self:check_against(node.else_branch, env, want, "else branch")
+    self:check_against(node.then_branch, env, inner, "then branch")
+    self:check_against(node.else_branch, env, inner, "else branch")
     t = want.type
   elseif k == "match" then
     self:synth(node.subject, env)
     for _, c in ipairs(node.cases) do
-      self:check_against(c.body, self:enter_case(c, node, env), want, "match arm")
+      self:check_against(c.body, self:enter_case(c, node, env), inner, "match arm")
     end
     self:check_exhaustive(node)
     t = want.type
@@ -428,11 +439,17 @@ function Checker:check_against(node, env, want, branch)
     local s = scope(env)
     for _, st in ipairs(node.stmts) do self:check_binding(st, s) end
     t = self:check_against(node.result, s, want, branch)
+  elseif k == "lambda" and branch and want.type.kind == "fun" and #node.params == #want.type.params then
+    local s, params = self:lambda_scope(node, env)
+    local ret = want.type.ret
+    local rt = self:check_against(node.body, s, { type = ret, whole = want.type, arg = want.arg }, branch)
+    t = { kind = "fun", params = params, ret = rt }
   else
     t = self:synth(node, env)
     if branch and not consistent(t, want.type) then
       local expected = want.arg and ("argument " .. want.arg .. " expects ") or "declared "
-      self:err(branch .. " is " .. tyname(t) .. ", " .. expected .. tyname(want.type), node)
+      local verb = want.whole and " returns " or " is "
+      self:err(branch .. verb .. tyname(t) .. ", " .. expected .. tyname(want.whole or want.type), node)
     end
     return t
   end
